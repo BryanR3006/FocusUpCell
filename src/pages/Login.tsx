@@ -19,30 +19,58 @@ import { useNavigation } from "@react-navigation/native";
 const Login: React.FC = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation();
-  const [formData, setFormData] = useState<LoginRequest>({ email: "", password: "" });
+  
+  const [formData, setFormData] = useState<LoginRequest>({ 
+    correo: "", 
+    contrasena: ""
+  });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
+    if (!formData.correo || !formData.contrasena) {
+      setError("Por favor, completa todos los campos");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.correo)) {
+      setError("Por favor, ingresa un email válido");
+      return;
+    }
+
     setLoading(true);
     setError("");
+    
     try {
+      console.log('Enviando datos:', formData);
       await login(formData);
-      navigation.navigate("home" as never);
+      navigation.navigate("Home" as never);
     } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.error || err?.message || "Error al iniciar sesión";
+      console.error('Error completo:', err);
+      const errorMessage = err?.message || "Error al iniciar sesión. Verifica tus credenciales.";
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRegister = () => {
+
+    console.log("Navegar a registro");
+  };
+
+  const handleForgotPassword = () => {
+   
+    console.log("Navegar a recuperar contraseña");
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.wrapper}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.card}>
@@ -54,7 +82,12 @@ const Login: React.FC = () => {
 
           <Text style={styles.title}>Iniciar sesión</Text>
 
-          {error !== "" && <Text style={styles.error}>{error}</Text>}
+          {error !== "" && (
+            <View style={styles.errorContainer}>
+              <Icon name="alert-circle" size={16} color="#fff" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
 
           {/* Email */}
           <View style={styles.inputGroup}>
@@ -63,10 +96,11 @@ const Login: React.FC = () => {
               placeholder="Correo electrónico"
               placeholderTextColor="#aaa"
               style={styles.input}
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
+              value={formData.correo}
+              onChangeText={(text) => setFormData({ ...formData, correo: text })}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
             />
           </View>
 
@@ -78,14 +112,20 @@ const Login: React.FC = () => {
               placeholderTextColor="#aaa"
               style={styles.input}
               secureTextEntry={!showPassword}
-              value={formData.password}
-              onChangeText={(text) => setFormData({ ...formData, password: text })}
+              value={formData.contrasena}
+              onChangeText={(text) => setFormData({ ...formData, contrasena: text })}
+              autoCapitalize="none"
+              autoComplete="password"
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeIcon}
             >
-              {showPassword ? <Icon name="eye-off" color="#888" size={20} /> : <Icon name="eye" color="#888" size={20} />}
+              {showPassword ? (
+                <Icon name="eye-off" color="#888" size={20} />
+              ) : (
+                <Icon name="eye" color="#888" size={20} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -104,10 +144,10 @@ const Login: React.FC = () => {
 
           {/* Links */}
           <View style={styles.links}>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleRegister}>
               <Text style={styles.link}>Registrarse</Text>
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleForgotPassword}>
               <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
           </View>
@@ -116,6 +156,7 @@ const Login: React.FC = () => {
     </KeyboardAvoidingView>
   );
 };
+
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
@@ -130,9 +171,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#1a1a1a",
     borderRadius: 16,
     padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
     elevation: 6,
     borderWidth: 1,
     borderColor: "#333",
@@ -149,14 +187,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 16,
   },
-  error: {
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#ff4d4f",
-    color: "#fff",
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
-    textAlign: "center",
     marginBottom: 16,
+    gap: 8,
+  },
+  errorText: {
+    color: "#fff",
     fontSize: 14,
+    flex: 1,
   },
   inputGroup: {
     flexDirection: "row",
@@ -204,6 +247,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
 
 export default Login;
