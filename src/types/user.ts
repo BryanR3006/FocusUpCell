@@ -18,7 +18,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   nombre_usuario: string;
   correo: string;
-  contrasena: string; // ← También aquí
+  contrasena: string; 
   fecha_nacimiento: Date;
   pais?: string;
   genero?: string;

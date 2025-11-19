@@ -11,7 +11,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-
+import {Mail,Lock, Eye, EyeOff} from "lucide-react-native";
 import Icon from "react-native-vector-icons/Feather";
 import { AuthContext } from "../contexts/AuthContext";
 import type { LoginRequest } from "../types/user";
@@ -71,7 +71,7 @@ const Login: React.FC = () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.card}>
+        <View style={styles.icon}>
           
           {/* LOGO */}
           <Image
@@ -90,7 +90,7 @@ const Login: React.FC = () => {
 
           {/* EMAIL */}
           <View style={styles.inputGroup}>
-            <Icon name="mail" size={20} style={styles.icon} />
+            <Mail size={20} style={styles.icon} />
             <TextInput
               placeholder="Correo electrónico"
               placeholderTextColor="#aaa"
@@ -107,7 +107,7 @@ const Login: React.FC = () => {
 
           {/* CONTRASEÑA */}
           <View style={styles.inputGroup}>
-            <Icon name="lock" size={20} style={styles.icon} />
+            <Lock  size={20} style={styles.icon} />
             <TextInput
               placeholder="Contraseña"
               placeholderTextColor="#aaa"
@@ -126,9 +126,9 @@ const Login: React.FC = () => {
               style={styles.eyeIcon}
             >
               {showPassword ? (
-                <Icon name="eye-off" size={20} color="#888" />
+                <EyeOff size={20} color="#888" />
               ) : (
-                <Icon name="eye" size={20} color="#888" />
+                < Eye size={20} color="#888" />
               )}
             </TouchableOpacity>
           </View>
@@ -191,15 +191,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
 
-  card: {
-    backgroundColor: "#1a1a1a",
-    borderRadius: 16,
-    padding: 24,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-
+ 
   logo: {
     width: 260,
     height: 120,

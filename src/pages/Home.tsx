@@ -1,182 +1,182 @@
-import React, { useContext } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  SafeAreaView,
-  StatusBar 
-} from "react-native";
-import { AuthContext } from "../contexts/AuthContext";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Modal } from "react-native";
+import { AnimatedCircularProgress } from "react-native-circular-progress";
+import Icon from "react-native-vector-icons/Feather";
+import { Menu } from "lucide-react-native";
+import Sidebar from "../ui/Sidebar";
+import {House,Bomb, Music, Calendar} from "lucide-react-native";
+
+
 
 const Home: React.FC = () => {
-  const { user, logout } = useContext(AuthContext);
-  const navigation = useNavigation();
-
-  const handleLogout = () => {
-    logout();
-    // Navega de vuelta al Login después del logout
-    navigation.navigate("Login" as never);
-  };
+  // Estado para controlar la visibilidad del sidebar
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View>
+        <Text style={styles.dos}></Text>
+
+      </View>
+
+      {/* Configuración de la barra de estado */}
       <StatusBar barStyle="light-content" backgroundColor="#171717" />
+
+      {/* Botón para abrir el menú lateral */}
+      <TouchableOpacity style={styles.menuToggle} onPress={() => setSidebarVisible(true)}>
+        <Menu size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Modal que contiene el sidebar */}
+      <Modal visible={sidebarVisible} transparent animationType="slide">
+        <Sidebar onClose={() => setSidebarVisible(false)} />
+      </Modal>
+
+      {/* Encabezado de la pantalla */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>Avance del proceso</Text>
+      </View>
+
+      {/* Contenido principal de la pantalla */}
       <View style={styles.container}>
         
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.welcomeTitle}>¡Bienvenido! 🎉</Text>
-          <Text style={styles.userName}>{user?.nombre_usuario || "Usuario"}</Text>
-          <Text style={styles.userEmail}>{user?.correo || "usuario@ejemplo.com"}</Text>
+        {/* Sección del círculo de progreso */}
+        <View style={styles.progressContainer}>
+          <AnimatedCircularProgress 
+            size={240} 
+            width={14} 
+            fill={23} 
+            tintColor="#ffffffff" 
+            backgroundColor="#333"
+          >
+            {() => <Text style={styles.progressText}>0%</Text>}
+          </AnimatedCircularProgress>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Tu Dashboard</Text>
-          
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Sesiones hoy</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Minutos focos</Text>
-            </View>
-          </View>
+        {/* Contenedor de botones de acción */}
+        <View style={styles.actionsContainer}>
+          {/* Botón principal - Sesión de concentración */}
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Empezar Sesión de Concentración</Text>
+          </TouchableOpacity>
 
-          {/* Quick Actions */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Text style={styles.actionButtonText}>Iniciar Sesión Focus</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButtonSecondary}>
-              <Text style={styles.actionButtonSecondaryText}>Ver Estadísticas</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Botón secundario - Configurar enfoque */}
+          <TouchableOpacity style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Configurar Enfoque Total</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
-        </TouchableOpacity>
-
+        {/* Barra de navegación inferior */}
+        <View style={styles.bottomNav}>
+          <House size={28} color="#fff" />
+          <Bomb size={28} color="#888" />
+          <Music size={28} color="#888" />
+          <Calendar size={28} color="#888" />
+        </View>
       </View>
     </SafeAreaView>
   );
 };
 
+// Estilos del componente
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#171717",
+  // Contenedor principal seguro para dispositivos
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: "#171717" 
   },
+  dos:{
+    marginTop:10
+  },
+  
+  // Botón de menú flotante
+  menuToggle: {
+    position: "absolute", 
+    top: 40, 
+    left: 20, 
+    zIndex: 100,
+    backgroundColor: "#333", 
+    padding: 10, 
+    borderRadius: 10,
+  },
+  
+  // Barra superior con título
+  topBar: { 
+    alignItems: "center", 
+    paddingVertical: 20 
+  },
+  
+  // Texto del título superior
+  topBarTitle: { 
+    fontSize: 25, 
+    fontWeight: "bold", 
+    color: "#fff" 
+  },
+  
+  // Contenedor principal del contenido
   container: {
-    flex: 1,
-    backgroundColor: "#171717",
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: "center",
-    paddingTop: 40,
-    paddingBottom: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  userName: {
-    fontSize: 22,
-    color: "#007bff",
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: "#888",
-  },
-  content: {
-    flex: 1,
-    paddingTop: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  statsContainer: {
-    flexDirection: "row",
+    flex: 1, 
     justifyContent: "space-between",
-    marginBottom: 30,
+    paddingHorizontal: 20, 
+    paddingBottom: 20,
   },
-  statCard: {
-    backgroundColor: "#1a1a1a",
-    padding: 20,
-    borderRadius: 12,
-    alignItems: "center",
-    flex: 0.48,
-    borderWidth: 1,
-    borderColor: "#333",
+  
+  // Contenedor del círculo de progreso
+  progressContainer: { 
+    alignItems: "center", 
+    marginTop: 50 
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#007bff",
-    marginBottom: 5,
+  
+  // Texto dentro del círculo de progreso
+  progressText: { 
+    fontSize: 80, 
+    color: "#fff", 
+    fontWeight: "bold" 
   },
-  statLabel: {
-    fontSize: 14,
-    color: "#888",
-    textAlign: "center",
+  
+  // Contenedor de los botones de acción
+  actionsContainer: { 
+    gap:18, 
+    marginTop: 1 
   },
-  actionsContainer: {
-    gap: 12,
-  },
-  actionButton: {
-    backgroundColor: "#007bff",
+  
+  // Estilos del botón principal
+  primaryButton: {
+    backgroundColor: "#008cffff", 
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 12, 
     alignItems: "center",
   },
-  actionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  
+  // Texto del botón principal
+  primaryButtonText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "bold" 
   },
-  actionButtonSecondary: {
-    backgroundColor: "transparent",
-    paddingVertical: 16,
-    borderRadius: 12,
+  
+  // Estilos del botón secundario
+  secondaryButton: {
+    backgroundColor: "#f97316", 
+    paddingVertical: 15,
+    borderRadius: 12, 
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#007bff",
+    width: "80%",
+    alignSelf: "center",
   },
-  actionButtonSecondaryText: {
-    color: "#007bff",
-    fontSize: 16,
-    fontWeight: "bold",
+  
+  // Texto del botón secundario
+  secondaryButtonText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "bold" 
   },
-  logoutButton: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  logoutButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  
+  // Barra de navegación inferior
+  bottomNav: {
+    flexDirection: "row", 
+    justifyContent: "space-around",
+    paddingVertical: 12, 
   },
 });
 
