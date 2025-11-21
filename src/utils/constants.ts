@@ -6,4 +6,5 @@ export const API_ENDPOINTS = {
   REQUEST_PASSWORD_RESET: "/users/request-password-reset",
   RESET_PASSWORD_WITH_CODE: "/users/reset-password-with-code",
   REGISTER: "/users",
+  USERS: "/users",
 } as const;

@@ -18,11 +18,21 @@ export interface LoginRequest {
 export interface RegisterRequest {
   nombre_usuario: string;
   correo: string;
-  contrasena: string; 
+  password: string;
   fecha_nacimiento: Date;
   pais?: string;
   genero?: string;
   horario_fav?: string;
+}
+
+export interface SurveyData {
+  sport: string;
+  experience: string;
+  age: number;
+}
+
+export interface ExtendedUserPayload extends RegisterRequest {
+  survey?: SurveyData;
 }
 
 export interface AuthResponse {
