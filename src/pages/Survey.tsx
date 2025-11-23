@@ -382,22 +382,31 @@ export default function SurveyPage() {
       const status = (response && response.status) || null;
       const data = (response && response.data) ? response.data : (response && typeof response === "object" ? response : null);
 
-      // Si axios-style y status !== 2xx -> capturar mensaje
-      if (status && (status < 200 || status >= 300)) {
+      // Si status es 4xx o 5xx → error
+      if (status && status >= 400) {
         const backendMsg = data?.message || data?.error || `Error ${status}`;
         throw new Error(backendMsg);
       }
 
-      // Si body indica success:false
-      if (data && (data.success === false || data.error || data.message && !data.success)) {
-        const backendMsg = data.message || data.error || "Error en registro";
-        throw new Error(backendMsg);
-      }
+      // ⭐ ACEPTAR el registro SIEMPRE que el backend NO mande un error
+if (data?.error || data?.success === false) {
+  // Si backend realmente envió error
+  throw new Error(data.error || data.message || "Error en registro");
+}
 
-      // Si no hay data pero call no falló, asumimos OK
-      Alert.alert("✅ Registro exitoso", "Se redirigirá al iniciar sesión.", [
-        { text: "Aceptar", onPress: () => navigation.navigate("Login") },
-      ]);
+  // 🔥 Cerrar modales antes del Alert
+  setPickerConfig({ visible: false, options: [], field: null });
+  setDateModalVisible(false);
+
+  // 🎉 Mostrar alerta de éxito
+  Alert.alert("✅ Registro exitoso", "Se redirigirá al iniciar sesión.", [
+    {
+      text: "Aceptar",
+      onPress: () => navigation.navigate("Login"),
+     },
+  ]);
+
+
     } catch (e: any) {
       // Mejor manejo de errores (muestra msg del backend si existe)
       const msg =
