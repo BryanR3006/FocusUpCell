@@ -8,7 +8,9 @@ import Home from "./src/pages/Home";
 import Register from "./src/pages/Register";
 import Confirmation from "./src/pages/Confirmation";
 import SurveyPage from "./src/pages/Survey";
-
+import ForgotPassword from "src/pages/ForgotPassword";
+import ForgotPasswordCode from "src/pages/ForgotPasswordCode";
+import ForgotPasswordReset from "src/pages/ForgotPasswordReset";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
@@ -26,6 +28,9 @@ export default function App() {
           <Stack.Screen name="Register" component={Register} />
           <Stack.Screen name="Confirmation" component={Confirmation} />
           <Stack.Screen name="Survey" component={SurveyPage} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
+          <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
