@@ -1,34 +1,90 @@
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE_URL } from "../utils/constants";
-import type { ApiError } from "../types/api";
+import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
+class ApiClient {
+  private baseURL: string;
 
-apiClient.interceptors.request.use(
-  async (config) => {
-    const token = await AsyncStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-apiClient.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    const apiError: ApiError = {
-      message: error?.response?.data?.message || "Error de servidor",
-      statusCode: error?.response?.status || 500,
-      error: error?.response?.data?.error || "Unknown error",
-    };
-    return Promise.reject(apiError);
+  constructor() {
+    this.baseURL = API_BASE_URL;
   }
-);
 
-export { apiClient };
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+
+  // Users
+  async getUsers() {
+    return this.request(API_ENDPOINTS.USERS);
+  }
+
+  async getUserProfile() {
+    return this.request(API_ENDPOINTS.PROFILE);
+  }
+
+  // Study Methods
+  async getStudyMethods() {
+    return this.request(API_ENDPOINTS.STUDY_METHODS);
+  }
+
+  async getStudyMethodById(id: string) {
+    return this.request(`${API_ENDPOINTS.STUDY_METHODS}/${id}`);
+  }
+
+  // Benefits
+  async getBenefits() {
+    return this.request(API_ENDPOINTS.BENEFITS);
+  }
+
+  // Events
+  async getEvents() {
+    return this.request(API_ENDPOINTS.EVENTS);
+  }
+
+  // Reports & Progress
+  async getReports() {
+    return this.request(API_ENDPOINTS.REPORTS);
+  }
+
+  async getActiveMethods() {
+    return this.request(API_ENDPOINTS.ACTIVE_METHODS);
+  }
+
+  async getMethodProgress() {
+    return this.request(API_ENDPOINTS.METHOD_PROGRESS);
+  }
+
+  async getSessionProgress() {
+    return this.request(API_ENDPOINTS.SESSION_PROGRESS);
+  }
+
+  // Notifications
+  async getNotificationPreferences() {
+    return this.request(API_ENDPOINTS.NOTIFICATIONS_PREFERENCES);
+  }
+
+  async getScheduledNotifications() {
+    return this.request(API_ENDPOINTS.NOTIFICATIONS_SCHEDULED);
+  }
+}
+
+export const apiClient = new ApiClient();
