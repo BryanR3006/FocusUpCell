@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-picker/picker": "^2.11.4",
     "@react-navigation/native": "^7.1.19",
     "@react-navigation/native-stack": "^7.6.2",
     "axios": "^1.13.2",
     "expo": "~54.0.23",
+    "expo-linear-gradient": "~15.0.7",
     "expo-status-bar": "~3.0.8",
     "lucide-react": "^0.553.0",
     "lucide-react-native": "^0.553.0",
