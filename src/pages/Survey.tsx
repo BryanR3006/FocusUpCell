@@ -17,6 +17,7 @@ import Icon from "react-native-vector-icons/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { RegisterRequest } from "../types/user";
+import {ChevronLeft, Calendar, ChevronDown } from "lucide-react-native";
 
 /**
  * SurveyPage - conversión fiel de la versión web a React Native (Expo).
@@ -432,7 +433,7 @@ if (data?.error || data?.success === false) {
     <LinearGradient colors={["#171717", "#1a1a1a"]} style={styles.wrapper}>
       <ScrollView contentContainerStyle={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
+          <ChevronLeft size={24} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.card}>
@@ -449,7 +450,7 @@ if (data?.error || data?.success === false) {
             <Text style={[styles.fieldText, !surveyData.fecha_nacimiento && styles.placeholder]}>
               {surveyData.fecha_nacimiento || "Selecciona una fecha"}
             </Text>
-            <Icon name="calendar" size={18} color="#bbb" />
+            <Calendar size={18} color="#bbb" />
           </TouchableOpacity>
 
           {/* País */}
@@ -458,7 +459,7 @@ if (data?.error || data?.success === false) {
             <Text style={[styles.fieldText, !surveyData.pais && styles.placeholder]}>
               {surveyData.pais || "Selecciona un país"}
             </Text>
-            <Icon name="map-pin" size={18} color="#bbb" />
+            <ChevronDown size={18} color="#bbb" />
           </TouchableOpacity>
 
           {/* Género */}
@@ -467,7 +468,7 @@ if (data?.error || data?.success === false) {
             <Text style={[styles.fieldText, !surveyData.genero && styles.placeholder]}>
               {surveyData.genero || "Selecciona un género"}
             </Text>
-            <Icon name="users" size={18} color="#bbb" />
+            <ChevronDown size={18} color="#bbb" />
           </TouchableOpacity>
 
           {!isInitialFieldsComplete ? (
@@ -490,7 +491,7 @@ if (data?.error || data?.success === false) {
                 <Text style={[styles.fieldText, !surveyData.distraction1 && styles.placeholder]}>
                   {surveyData.distraction1 ? (distractions.find(d => d.value === surveyData.distraction1)?.label) : "Selecciona una distracción"}
                 </Text>
-                <Icon name="alert-circle" size={18} color="#bbb" />
+                <ChevronDown size={18} color="#bbb" />
               </TouchableOpacity>
 
               <Text style={styles.label}>Segunda distracción</Text>
@@ -498,7 +499,7 @@ if (data?.error || data?.success === false) {
                 <Text style={[styles.fieldText, !surveyData.distraction2 && styles.placeholder]}>
                   {surveyData.distraction2 ? (distractions.find(d => d.value === surveyData.distraction2)?.label) : "Selecciona una distracción"}
                 </Text>
-                <Icon name="alert-circle" size={18} color="#bbb" />
+                <ChevronDown size={18} color="#bbb" />
               </TouchableOpacity>
 
               <Text style={[styles.h1, { marginTop: 18 }]}>
@@ -509,7 +510,7 @@ if (data?.error || data?.success === false) {
                 <Text style={[styles.fieldText, !surveyData.objective && styles.placeholder]}>
                   {surveyData.objective ? (objectives.find(o => o.value === surveyData.objective)?.label) : "Selecciona una opción"}
                 </Text>
-                <Icon name="target" size={18} color="#bbb" />
+                <ChevronDown size={18} color="#bbb" />
               </TouchableOpacity>
 
               <Text style={[styles.h1, { marginTop: 18 }]}>
@@ -523,7 +524,7 @@ if (data?.error || data?.success === false) {
                     <Text style={[styles.fieldText, !surveyData.hours && styles.placeholder]}>
                       {surveyData.hours || "HH"}
                     </Text>
-                    <Icon name="chevron-down" size={18} color="#bbb" />
+                    <ChevronDown size={18} color="#bbb" />
                   </TouchableOpacity>
                 </View>
 
@@ -533,7 +534,7 @@ if (data?.error || data?.success === false) {
                     <Text style={[styles.fieldText, !surveyData.minutes && styles.placeholder]}>
                       {surveyData.minutes || "MM"}
                     </Text>
-                    <Icon name="chevron-down" size={18} color="#bbb" />
+                    <ChevronDown size={18} color="#bbb" />
                   </TouchableOpacity>
                 </View>
 
@@ -543,7 +544,7 @@ if (data?.error || data?.success === false) {
                     <Text style={[styles.fieldText, !surveyData.period && styles.placeholder]}>
                       {surveyData.period || "AM/PM"}
                     </Text>
-                    <Icon name="chevron-down" size={18} color="#bbb" />
+                    <ChevronDown size={18} color="#bbb" />
                   </TouchableOpacity>
                 </View>
               </View>
