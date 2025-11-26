@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,8 +29,10 @@ import {
   Clock,
   Target,
   BarChart3,
-  House,
   TrendingUp,
+  House,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
@@ -69,7 +73,7 @@ const COLORS = {
   textSecondary: '#94A3B8',
 };
 
-/* ---------- Helpers & pequeños componentes ---------- */
+/* ---------- Helpers ---------- */
 const getMethodIcon = (iconName?: string) => {
   const icons: Record<string, any> = {
     clock: Clock,
@@ -82,6 +86,7 @@ const getMethodIcon = (iconName?: string) => {
   return iconName ? icons[iconName] || BookOpen : BookOpen;
 };
 
+/* ---------- Componentes ---------- */
 const Stat = ({ Icon, value, label, color }: any) => (
   <View style={styles.statItem}>
     <Icon size={20} color={color} />
@@ -102,6 +107,78 @@ const EmptyState = ({ title, subtitle, actionLabel, onPress }: any) => (
   </View>
 );
 
+// Componente de Card Expandible
+const ExpandableCard = ({ 
+  title, 
+  description, 
+  icon: Icon, 
+  iconColor, 
+  isOpen, 
+  onToggle,
+  children 
+}: any) => (
+  <View style={styles.expandableCard}>
+    <TouchableOpacity
+      style={[styles.card, { borderLeftColor: iconColor }]}
+      onPress={onToggle}
+      activeOpacity={0.85}
+    >
+      <View style={styles.cardLeft}>
+        <View style={[styles.cardIcon, { backgroundColor: `${iconColor}22` }]}>
+          <Icon size={22} color={iconColor} />
+        </View>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardDesc}>{description}</Text>
+      </View>
+      <View style={styles.cardRight}>
+        {isOpen ? (
+          <ChevronUp size={20} color={COLORS.textSecondary} />
+        ) : (
+          <ChevronDown size={20} color={COLORS.textSecondary} />
+        )}
+      </View>
+    </TouchableOpacity>
+
+    <AnimatedDropdown open={isOpen}>
+      {children}
+    </AnimatedDropdown>
+  </View>
+);
+
+// Componente de Animación
+const AnimatedDropdown = ({ open, children }: any) => {
+  const animation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(animation, {
+      toValue: open ? 1 : 0,
+      duration: 260,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+  }, [open]);
+
+  const height = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 'auto'],
+  });
+
+  const opacity = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  if (!open && animation.__getValue() === 0) return null;
+
+  return (
+    <Animated.View style={[styles.sectionDrop, { height, opacity }]}>
+      {children}
+    </Animated.View>
+  );
+};
+
 /* ---------- Componente principal ---------- */
 const Home: React.FC = () => {
   const navigation = useNavigation();
@@ -109,6 +186,7 @@ const Home: React.FC = () => {
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [studyMethods, setStudyMethods] = useState<StudyMethod[]>([]);
   const [musicItems, setMusicItems] = useState<MusicItem[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>({
@@ -116,7 +194,23 @@ const Home: React.FC = () => {
     completedMethods: 0,
     totalSessions: 0,
   });
+
   const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+
+  /** Cards abiertas */
+  const [openCards, setOpenCards] = useState<Record<string, boolean>>({
+    metodos: false,
+    musica: false,
+    sesion: false,
+    eventos: false,
+  });
+
+  const toggleCard = (key: string) => {
+    setOpenCards(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   useEffect(() => {
     loadUserData();
@@ -133,7 +227,6 @@ const Home: React.FC = () => {
 
       setStudyMethods(Array.isArray(methodsData) ? methodsData.slice(0, 3) : []);
 
-      // Música de ejemplo — sustituir por tu endpoint si tienes
       setMusicItems([
         { id: 'm1', nombre: 'Lo-Fi Study Beats', artista: 'Study Vibes', genero: 'Lo-Fi' },
         { id: 'm2', nombre: 'Pianos Calm', artista: 'Relaxed', genero: 'Classical' },
@@ -144,6 +237,7 @@ const Home: React.FC = () => {
         completedMethods: progressData?.completedCount || 0,
         totalSessions: progressData?.totalSessions || 0,
       });
+
     } catch (err) {
       console.warn('Error cargando datos', err);
       setStudyMethods([]);
@@ -154,37 +248,6 @@ const Home: React.FC = () => {
   }, []);
 
   const navigateTo = (screen: string) => navigation.navigate(screen as never);
-
-  const cardData = [
-    {
-      Icon: Music,
-      title: 'Música',
-      desc: 'Playlists para concentrarte mejor',
-      onPress: () => navigateTo('MusicAlbums'),
-      color: COLORS.secondary,
-    },
-    {
-      Icon: BookOpen,
-      title: 'Métodos',
-      desc: `${userProgress.totalMethods} métodos disponibles`,
-      onPress: () => navigateTo('StudyMethods'),
-      color: COLORS.primary,
-    },
-    {
-      Icon: Calendar,
-      title: 'Eventos',
-      desc: 'Organiza tus sesiones',
-      onPress: () => navigateTo('Events'),
-      color: COLORS.success,
-    },
-  ];
-
-  const stats = [
-    { Icon: BookOpen, value: userProgress.totalMethods, label: 'Métodos', color: COLORS.primary },
-    { Icon: Target, value: userProgress.completedMethods, label: 'Completados', color: COLORS.success },
-    { Icon: Music, value: musicItems.length, label: 'Playlists', color: COLORS.secondary },
-    { Icon: TrendingUp, value: userProgress.totalSessions, label: 'Sesiones', color: COLORS.warning },
-  ];
 
   if (loading) {
     return (
@@ -203,6 +266,7 @@ const Home: React.FC = () => {
         <Sidebar onClose={() => setSidebarVisible(false)} />
       </Modal>
 
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconRound} onPress={() => setSidebarVisible(true)}>
           <Menu size={20} color={COLORS.textPrimary} />
@@ -223,147 +287,150 @@ const Home: React.FC = () => {
         }}
         scrollEventThrottle={16}
       >
+        {/* Bienvenida */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>¡Hola, {user?.nombre_usuario ?? 'Usuario'}! 👋</Text>
           <Text style={styles.welcomeSubtitle}>Tu espacio para estudiar con foco</Text>
         </View>
 
-        {/* Cards */}
+        {/* --------- CARDS EXPANDIBLES --------- */}
         <View style={styles.cardsRow}>
-          {cardData.map((c, i) => (
-            <TouchableOpacity key={i} style={[styles.card, { borderLeftColor: c.color }]} onPress={c.onPress} activeOpacity={0.85}>
-              <View style={styles.cardLeft}>
-                <View style={[styles.cardIcon, { backgroundColor: `${c.color}22` }]}>
-                  <c.Icon size={22} color={c.color} />
-                </View>
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{c.title}</Text>
-                <Text style={styles.cardDesc}>{c.desc}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {stats.map((s, i) => (
-            <Stat key={i} Icon={s.Icon} value={s.value} label={s.label} color={s.color} />
-          ))}
-        </View>
-
-        {/* Métodos */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <BookOpen size={18} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Métodos activos</Text>
-            <TouchableOpacity onPress={() => navigateTo('StudyMethods')}>
-              <Text style={styles.linkText}>Ver todos</Text>
-            </TouchableOpacity>
-          </View>
-
-          {studyMethods.length === 0 ? (
-            <EmptyState
-              title="Sin métodos activos"
-              subtitle="Aún no tienes métodos activos. Agrega uno para empezar a seguir tu progreso."
-              actionLabel="Explorar métodos"
-              onPress={() => navigateTo('StudyMethods')}
-            />
-          ) : (
-            <FlatList
-              data={studyMethods}
-              keyExtractor={(i) => i.id}
-              renderItem={({ item }) => {
-                const Icon = getMethodIcon(item.icono);
-                const color = item.color || COLORS.primary;
-                return (
-                  <View style={styles.methodCard}>
-                    <View style={[styles.methodLeft, { backgroundColor: `${color}22` }]}>
-                      <Icon size={18} color={color} />
-                    </View>
-                    <View style={styles.methodMiddle}>
-                      <Text style={styles.methodName}>{item.nombre}</Text>
-                      <Text style={styles.methodDesc} numberOfLines={1}>{item.descripcion}</Text>
-                      <View style={styles.smallProgressBar}>
-                        <View style={[styles.smallProgressFill, { width: `${item.progreso ?? 0}%`, backgroundColor: color }]} />
+          {/* MÉTODOS */}
+          <ExpandableCard
+            title="Métodos"
+            description={`${userProgress.totalMethods} métodos disponibles`}
+            icon={BookOpen}
+            iconColor={COLORS.primary}
+            isOpen={openCards.metodos}
+            onToggle={() => toggleCard('metodos')}
+          >
+            {studyMethods.length === 0 ? (
+              <EmptyState
+                title="Sin métodos"
+                subtitle="No tienes métodos en curso."
+                actionLabel="Ver métodos"
+                onPress={() => navigateTo('StudyMethods')}
+              />
+            ) : (
+              <FlatList
+                data={studyMethods}
+                keyExtractor={(i) => i.id}
+                renderItem={({ item }) => {
+                  const Icon = getMethodIcon(item.icono);
+                  const color = item.color || COLORS.primary;
+                  return (
+                    <View style={styles.methodCard}>
+                      <View style={[styles.methodLeft, { backgroundColor: `${color}22` }]}>
+                        <Icon size={18} color={color} />
                       </View>
+                      <View style={styles.methodMiddle}>
+                        <Text style={styles.methodName}>{item.nombre}</Text>
+                        <Text style={styles.methodDesc} numberOfLines={1}>{item.descripcion}</Text>
+                        <View style={styles.smallProgressBar}>
+                          <View style={[styles.smallProgressFill, { width: `${item.progreso ?? 0}%`, backgroundColor: color }]} />
+                        </View>
+                      </View>
+                      <Text style={[styles.methodPct]}>{item.progreso ?? 0}%</Text>
                     </View>
-                    <Text style={[styles.methodPct, { color: (item.progreso === 100 ? COLORS.success : color) }]}>{item.progreso ?? 0}%</Text>
+                  );
+                }}
+                scrollEnabled={false}
+              />
+            )}
+          </ExpandableCard>
+
+          {/* MÚSICA */}
+          <ExpandableCard
+            title="Música"
+            description="Playlists para concentrarte"
+            icon={Music}
+            iconColor={COLORS.secondary}
+            isOpen={openCards.musica}
+            onToggle={() => toggleCard('musica')}
+          >
+            {musicItems.length === 0 ? (
+              <EmptyState
+                title="Sin playlists"
+                subtitle="No tienes música aún."
+                actionLabel="Explorar música"
+                onPress={() => navigateTo('MusicAlbums')}
+              />
+            ) : (
+              <FlatList
+                data={musicItems}
+                keyExtractor={(i) => i.id}
+                renderItem={({ item }) => (
+                  <View style={styles.musicRow}>
+                    <View style={styles.musicAvatar}><Music size={16} color={COLORS.secondary} /></View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.musicTitle}>{item.nombre}</Text>
+                      <Text style={styles.musicSubtitle}>{item.artista}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.playBtn}>
+                      <Play size={14} color="#fff" />
+                    </TouchableOpacity>
                   </View>
-                );
-              }}
-              scrollEnabled={false}
-            />
-          )}
-        </View>
+                )}
+                scrollEnabled={false}
+              />
+            )}
+          </ExpandableCard>
 
-        {/* Música */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Music size={18} color={COLORS.secondary} />
-            <Text style={styles.sectionTitle}>Playlists</Text>
-            <TouchableOpacity onPress={() => navigateTo('MusicAlbums')}>
-              <Text style={styles.linkText}>Ver toda</Text>
-            </TouchableOpacity>
-          </View>
+          {/* SESIÓN RÁPIDA */}
+          <ExpandableCard
+            title="Sesión rápida"
+            description="Comienza una sesión"
+            icon={Zap}
+            iconColor={COLORS.warning}
+            isOpen={openCards.sesion}
+            onToggle={() => toggleCard('sesion')}
+          >
+            {userProgress.totalSessions === 0 ? (
+              <EmptyState
+                title="Sin sesiones"
+                subtitle="Aún no has iniciado sesiones."
+                actionLabel="Iniciar sesión"
+                onPress={() => navigateTo('QuickSession')}
+              />
+            ) : (
+              <View>
+                <Text style={styles.sessionText}>
+                  Has completado{' '}
+                  <Text style={{ fontWeight: '800' }}>{userProgress.totalSessions}</Text> sesiones
+                </Text>
 
-          {musicItems.length === 0 ? (
+                <TouchableOpacity style={styles.sessionCTA} onPress={() => navigateTo('QuickSession')}>
+                  <Play size={14} color="#fff" />
+                  <Text style={styles.sessionCTAText}>Iniciar sesión</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ExpandableCard>
+
+          {/* EVENTOS */}
+          <ExpandableCard
+            title="Eventos"
+            description="Organiza tus sesiones"
+            icon={Calendar}
+            iconColor={COLORS.success}
+            isOpen={openCards.eventos}
+            onToggle={() => toggleCard('eventos')}
+          >
             <EmptyState
-              title="Sin playlists"
-              subtitle="No tienes playlists guardadas todavía."
-              actionLabel="Explorar música"
-              onPress={() => navigateTo('MusicAlbums')}
+              title="Sin eventos"
+              subtitle="No hay eventos programados."
+              actionLabel="Crear evento"
+              onPress={() => navigateTo('Events')}
             />
-          ) : (
-            <FlatList
-              data={musicItems}
-              keyExtractor={(i) => i.id}
-              renderItem={({ item }) => (
-                <View style={styles.musicRow}>
-                  <View style={styles.musicAvatar}><Music size={16} color={COLORS.secondary} /></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.musicTitle}>{item.nombre}</Text>
-                    <Text style={styles.musicSubtitle}>{item.artista}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.playBtn} onPress={() => { /* reproducir */ }}>
-                    <Play size={14} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              scrollEnabled={false}
-            />
-          )}
+          </ExpandableCard>
+
         </View>
 
-        {/* Sesión rápida */}
-        <View style={styles.section}>
-          <View style={styles.sessionHeaderFull}>
-            <Zap size={20} color={COLORS.warning} />
-            <Text style={styles.sectionTitle}>Sesión de concentración</Text>
-          </View>
-
-          {userProgress.totalSessions === 0 ? (
-            <EmptyState
-              title="Aún sin sesiones"
-              subtitle="No has iniciado sesiones de concentración."
-              actionLabel="Comenzar ahora"
-              onPress={() => navigateTo('QuickSession')}
-            />
-          ) : (
-            <View style={styles.sessionSummary}>
-              <Text style={styles.sessionText}>Has completado <Text style={{ fontWeight: '800' }}>{userProgress.totalSessions}</Text> sesiones</Text>
-              <TouchableOpacity style={styles.sessionCTA} onPress={() => navigateTo('QuickSession')}>
-                <Play size={14} color="#fff" />
-                <Text style={styles.sessionCTAText}>Iniciar sesión</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 90 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bottom nav */}
+      {/* BOTTOM NAV */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]}>
           <House size={18} color={COLORS.primary} />
@@ -394,7 +461,7 @@ export default Home;
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.bgDark },
   scrollView: { flex: 1 },
-  scrollContainer: { paddingBottom: 140 },
+  scrollContainer: { paddingBottom: 180 },
 
   header: {
     height: 64,
@@ -429,13 +496,17 @@ const styles = StyleSheet.create({
   welcomeSubtitle: { color: COLORS.textSecondary, marginTop: 4 },
 
   cardsRow: { paddingHorizontal: 16, gap: 12 },
+
+  expandableCard: {
+    marginBottom: 8,
+  },
+
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
     borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -443,21 +514,29 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+
+  sectionDrop: {
+    backgroundColor: COLORS.card,
+    padding: 14,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.surface,
+    borderTopWidth: 0,
+    marginTop: -8,
+    overflow: 'hidden',
+  },
+
   cardLeft: { width: 56, alignItems: 'center' },
-  cardIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   cardBody: { flex: 1, paddingLeft: 8 },
+  cardRight: { width: 24, alignItems: 'center' },
+  cardIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
   cardDesc: { color: COLORS.textSecondary, fontSize: 13, marginTop: 4 },
 
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, marginTop: 6, marginBottom: 12 },
   statItem: { flex: 1, alignItems: 'center' },
   statNumber: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', marginTop: 6 },
   statLabel: { color: COLORS.textSecondary, fontSize: 12, marginTop: 4 },
-
-  section: { marginHorizontal: 16, marginBottom: 16, backgroundColor: COLORS.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.surface },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  sectionTitle: { color: COLORS.textPrimary, fontWeight: '800', flex: 1, marginLeft: 10 },
-  linkText: { color: COLORS.primary, fontWeight: '700' },
 
   emptyState: { alignItems: 'center', padding: 18 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800', marginBottom: 6 },
@@ -465,25 +544,23 @@ const styles = StyleSheet.create({
   emptyButton: { backgroundColor: COLORS.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
   emptyButtonText: { color: '#fff', fontWeight: '700' },
 
-  methodCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.02)' },
+  methodCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   methodLeft: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   methodMiddle: { flex: 1 },
   methodName: { color: COLORS.textPrimary, fontWeight: '800' },
   methodDesc: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
   smallProgressBar: { height: 6, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 6, marginTop: 8, overflow: 'hidden' },
   smallProgressFill: { height: '100%', borderRadius: 6 },
-  methodPct: { width: 48, textAlign: 'right', fontWeight: '800' },
+  methodPct: { width: 48, textAlign: 'right', fontWeight: '800', color: COLORS.textPrimary },
 
-  musicRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.02)' },
+  musicRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   musicAvatar: { width: 44, height: 44, borderRadius: 10, backgroundColor: 'rgba(139,92,246,0.12)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   musicTitle: { color: COLORS.textPrimary, fontWeight: '800' },
   musicSubtitle: { color: COLORS.textSecondary, fontSize: 12 },
   playBtn: { backgroundColor: COLORS.primary, padding: 10, borderRadius: 10 },
 
-  sessionHeaderFull: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  sessionSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sessionText: { color: COLORS.textPrimary },
-  sessionCTA: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+  sessionText: { color: COLORS.textPrimary, marginBottom: 8 },
+  sessionCTA: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, marginTop: 10 },
   sessionCTAText: { color: '#fff', marginLeft: 8, fontWeight: '800' },
 
   bottomNav: { position: 'absolute', bottom: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'transparent' },
