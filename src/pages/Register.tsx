@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { User, Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { User, Mail, Lock, Eye, EyeOff, ChevronLeft } from "lucide-react-native";
+import Icon from "react-native-vector-icons/Feather";
+
 
 type RootStackParamList = {
   Login: undefined;
@@ -116,7 +118,7 @@ export default function RegisterPage({ navigation }: { navigation: NativeStackNa
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>{"<"}</Text>
+        <ChevronLeft size={28} color="#fff" />
       </TouchableOpacity>
 
       <View style={styles.card}>
@@ -231,7 +233,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     position: "absolute",
-    top: 40,
+    top: 20,
     left: 20,
   },
   backText: {

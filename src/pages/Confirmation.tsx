@@ -16,6 +16,7 @@ import type { RootStackParamList } from "../types/navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { RegisterRequest } from "../types/user";
 import Icon from "react-native-vector-icons/Feather";
+import {ChevronLeft } from "lucide-react-native";
 
 const ConfirmationPage = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -28,7 +29,7 @@ const ConfirmationPage = () => {
 
   const handleNo = async () => {
     setLoading(true);
-    setError("Home");
+    setError("");
 
     try {
       const storedData = await AsyncStorage.getItem("registrationData");
@@ -90,7 +91,7 @@ const ConfirmationPage = () => {
         
         {/* Botón atrás */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={28} color="#fff" />
+          <ChevronLeft size={28} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.card}>

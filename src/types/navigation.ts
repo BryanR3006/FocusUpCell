@@ -4,6 +4,9 @@ export type RootStackParamList = {
   Register: undefined;
   Confirmation: undefined;
   Survey: undefined;
+  ForgotPassword: undefined;
+  ForgotPasswordCode: undefined;
+  ForgotPasswordReset: undefined;
   StudyMethods: undefined;
   PomodoroIntro: { methodId: number };
   MindMapsIntro: { methodId: number };
