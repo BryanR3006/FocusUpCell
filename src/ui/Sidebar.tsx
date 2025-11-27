@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigation = useNavigation();
   const { user, logout, loading } = useAuth();
   const [focusToolsOpen, setFocusToolsOpen] = React.useState(false);
-  const slideAnim = React.useRef(new Animated.Value(-width)).current;
+  const slideAnim = React.useRef(new Animated.Value(-width * 0.8)).current;
 
   React.useEffect(() => {
     if (visible) {
@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }).start();
     } else {
       Animated.timing(slideAnim, {
-        toValue: -width,
+        toValue: -width * 0.8,
         duration: 300,
         useNativeDriver: true,
       }).start();
@@ -261,8 +261,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sidebar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
     width: width * 0.8,
-    height: "100%",
     backgroundColor: "#232323",
     borderRightWidth: 1,
     borderRightColor: "#333",

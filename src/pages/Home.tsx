@@ -162,7 +162,7 @@ const AnimatedDropdown = ({ open, children }: any) => {
 
   const height = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 'auto'],
+    outputRange: [0, 120],
   });
 
   const opacity = animation.interpolate({
@@ -170,7 +170,7 @@ const AnimatedDropdown = ({ open, children }: any) => {
     outputRange: [0, 1],
   });
 
-  if (!open && animation.__getValue() === 0) return null;
+  if (!open) return null;
 
   return (
     <Animated.View style={[styles.sectionDrop, { height, opacity }]}>
@@ -262,9 +262,7 @@ const Home: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDark} />
 
-      <Modal visible={sidebarVisible} transparent animationType="slide">
-        <Sidebar onClose={() => setSidebarVisible(false)} />
-      </Modal>
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
 
       {/* HEADER */}
       <View style={styles.header}>

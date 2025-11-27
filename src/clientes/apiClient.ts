@@ -37,6 +37,10 @@ class ApiClient {
     return this.request(API_ENDPOINTS.USERS);
   }
 
+  async post(endpoint: string, body: any) {
+    return this.request(endpoint, { method: 'POST', body: JSON.stringify(body) });
+  }
+
   async getUserProfile() {
     return this.request(API_ENDPOINTS.PROFILE);
   }

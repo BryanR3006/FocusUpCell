@@ -13,12 +13,14 @@ import {
 } from "react-native";
 import {Mail,Lock, Eye, EyeOff} from "lucide-react-native";
 import Icon from "react-native-vector-icons/Feather";
-import { AuthContext } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
+import { apiClient } from "../clientes/apiClient";
+import { API_ENDPOINTS } from "../utils/constants";
 import type { LoginRequest } from "../types/user";
 import { useNavigation } from "@react-navigation/native";
 
 const Login: React.FC = () => {
-  const { login } = useContext(AuthContext);
+  const { login } = useAuth();
   const navigation = useNavigation();
 
   const [formData, setFormData] = useState<LoginRequest>({
@@ -46,7 +48,9 @@ const Login: React.FC = () => {
     setError("");
 
     try {
-      await login(formData);
+      const resp = await apiClient.post(API_ENDPOINTS.LOGIN, formData);
+      // Esperamos que la respuesta incluya token y user según `AuthResponse`
+      await login(resp.token, resp.user);
       navigation.navigate("Home" as never);
     } catch (err: any) {
       const errorMessage =

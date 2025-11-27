@@ -9,6 +9,7 @@ import Home from "./src/pages/Home";
 import Register from "./src/pages/Register";
 import Confirmation from "./src/pages/Confirmation";
 import SurveyPage from "./src/pages/Survey";
+import StudyMethodsLibraryPage from "./src/pages/StudyMethodsLibraryPage";
 
 import ForgotPassword from "./src/pages/ForgotPassword";
 import ForgotPasswordCode from "./src/pages/ForgotPasswordCode";
@@ -28,6 +29,7 @@ export default function App() {
         >
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
           <Stack.Screen name="Register" component={Register} />
           <Stack.Screen name="Confirmation" component={Confirmation} />
           <Stack.Screen name="Survey" component={SurveyPage} />

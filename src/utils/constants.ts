@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   LOGIN: "/users/login",
   LOGOUT: "/users/logout",
   PROFILE: "/users/profile",
+  REGISTER: "/users/register",
   DELETE_ACCOUNT: "/users/delete",
   REQUEST_PASSWORD_RESET: "/users/request-password-reset",
   RESET_PASSWORD_WITH_CODE: "/users/reset-password-with-code",
