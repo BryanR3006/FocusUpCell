@@ -62,15 +62,15 @@ interface UserProgress {
 
 // Colores
 const COLORS = {
-  primary: '#0EA5E9',
-  secondary: '#8B5CF6',
+  primary: '#8B5CF6',     // morado principal
+  secondary: '#06B6D4',   // cian/acento
   success: '#10B981',
   warning: '#F59E0B',
-  bgDark: '#0F172A',
-  card: '#111827',
-  surface: '#1F2937',
-  textPrimary: '#F8FAFC',
-  textSecondary: '#94A3B8',
+  bgDark: '#070812',      // fondo más oscuro y uniforme
+  card: '#0B1020',        // color de tarjetas
+  surface: '#0F1724',     // superficie para bordes/sombras
+  textPrimary: '#E6EDFF', // texto principal con más contraste
+  textSecondary: '#9AA7C7', // texto secundario
 };
 
 /* ---------- Helpers ---------- */
@@ -459,78 +459,78 @@ export default Home;
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.bgDark },
   scrollView: { flex: 1 },
-  scrollContainer: { paddingBottom: 180 },
+  scrollContainer: { paddingBottom: 200, paddingTop: 12 },
 
   header: {
-    height: 64,
+    height: 72,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
   },
   iconRound: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(139,92,246,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   userRound: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(14,165,233,0.08)',
+    backgroundColor: 'rgba(6,182,212,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
+  headerTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '800' },
 
-  welcomeSection: { padding: 18 },
-  welcomeTitle: { color: COLORS.textPrimary, fontSize: 26, fontWeight: '800' },
-  welcomeSubtitle: { color: COLORS.textSecondary, marginTop: 4 },
+  welcomeSection: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 },
+  welcomeTitle: { color: COLORS.textPrimary, fontSize: 28, fontWeight: '900' },
+  welcomeSubtitle: { color: COLORS.textSecondary, marginTop: 6 },
 
-  cardsRow: { paddingHorizontal: 16, gap: 12 },
+  cardsRow: { paddingHorizontal: 16, gap: 14 },
 
   expandableCard: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
 
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 14,
-    borderLeftWidth: 4,
+    borderRadius: 16,
+    padding: 16,
+    borderLeftWidth: 6,
+    borderLeftColor: 'transparent',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+    marginVertical: 6,
   },
 
   sectionDrop: {
     backgroundColor: COLORS.card,
     padding: 14,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-    borderWidth: 1,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    borderWidth: 0.5,
     borderColor: COLORS.surface,
-    borderTopWidth: 0,
-    marginTop: -8,
+    marginTop: -6,
     overflow: 'hidden',
   },
 
-  cardLeft: { width: 56, alignItems: 'center' },
-  cardBody: { flex: 1, paddingLeft: 8 },
-  cardRight: { width: 24, alignItems: 'center' },
-  cardIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
-  cardDesc: { color: COLORS.textSecondary, fontSize: 13, marginTop: 4 },
+  cardLeft: { width: 60, alignItems: 'center' },
+  cardBody: { flex: 1, paddingLeft: 12 },
+  cardRight: { width: 28, alignItems: 'center' },
+  cardIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800' },
+  cardDesc: { color: COLORS.textSecondary, fontSize: 13, marginTop: 6 },
 
   statItem: { flex: 1, alignItems: 'center' },
   statNumber: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', marginTop: 6 },
@@ -539,35 +539,35 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 18 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800', marginBottom: 6 },
   emptySubtitle: { color: COLORS.textSecondary, textAlign: 'center', marginBottom: 12 },
-  emptyButton: { backgroundColor: COLORS.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+  emptyButton: { backgroundColor: COLORS.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
   emptyButtonText: { color: '#fff', fontWeight: '700' },
 
-  methodCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  methodLeft: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  methodCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  methodLeft: { width: 52, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   methodMiddle: { flex: 1 },
-  methodName: { color: COLORS.textPrimary, fontWeight: '800' },
-  methodDesc: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
-  smallProgressBar: { height: 6, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 6, marginTop: 8, overflow: 'hidden' },
-  smallProgressFill: { height: '100%', borderRadius: 6 },
+  methodName: { color: COLORS.textPrimary, fontWeight: '900', fontSize: 14 },
+  methodDesc: { color: COLORS.textSecondary, fontSize: 12, marginTop: 4 },
+  smallProgressBar: { height: 8, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, marginTop: 10, overflow: 'hidden' },
+  smallProgressFill: { height: '100%', borderRadius: 8 },
   methodPct: { width: 48, textAlign: 'right', fontWeight: '800', color: COLORS.textPrimary },
 
   musicRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  musicAvatar: { width: 44, height: 44, borderRadius: 10, backgroundColor: 'rgba(139,92,246,0.12)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  musicAvatar: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(139,92,246,0.12)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   musicTitle: { color: COLORS.textPrimary, fontWeight: '800' },
   musicSubtitle: { color: COLORS.textSecondary, fontSize: 12 },
-  playBtn: { backgroundColor: COLORS.primary, padding: 10, borderRadius: 10 },
+  playBtn: { backgroundColor: COLORS.secondary, padding: 10, borderRadius: 10 },
 
   sessionText: { color: COLORS.textPrimary, marginBottom: 8 },
-  sessionCTA: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, marginTop: 10 },
-  sessionCTAText: { color: '#fff', marginLeft: 8, fontWeight: '800' },
+  sessionCTA: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, marginTop: 10 },
+  sessionCTAText: { color: '#fff', marginLeft: 10, fontWeight: '800' },
 
-  bottomNav: { position: 'absolute', bottom: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'transparent' },
+  bottomNav: { position: 'absolute', bottom: 14, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'transparent' },
   navBtn: { alignItems: 'center', justifyContent: 'center' },
-  navBtnActive: { backgroundColor: 'rgba(14,165,233,0.08)', padding: 8, borderRadius: 10 },
+  navBtnActive: { backgroundColor: 'rgba(139,92,246,0.12)', padding: 10, borderRadius: 12 },
   navLabel: { color: COLORS.textSecondary, fontSize: 11, marginTop: 4 },
   navLabelActive: { color: COLORS.primary, fontSize: 11, marginTop: 4, fontWeight: '800' },
 
-  fabScroll: { position: 'absolute', bottom: 100, right: 20, width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.03)' },
+  fabScroll: { position: 'absolute', bottom: 100, right: 20, width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.03)' },
 
-  loadingText: { color: COLORS.textPrimary, textAlign: 'center', marginTop: 12 },
+  loadingText: { color: COLORS.textSecondary, textAlign: 'center', marginTop: 12 },
 });

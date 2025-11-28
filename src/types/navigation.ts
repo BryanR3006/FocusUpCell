@@ -11,8 +11,5 @@ export type RootStackParamList = {
   PomodoroIntro: { methodId: number };
   MindMapsIntro: { methodId: number };
   SpacedRepetitionIntro: { methodId: number };
-  ActiveRecallIntro: { methodId: number };
-  FeynmanIntro: { methodId: number };
-  CornellIntro: { methodId: number };
-  MethodSteps: { methodId: number };
+ 
 };

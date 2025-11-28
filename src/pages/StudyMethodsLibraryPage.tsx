@@ -171,15 +171,34 @@ export const StudyMethodsLibraryPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // -----------------------------------------
+  // Aquí está la implementación actualizada:
+  // Navega a PomodoroIntro y además pasa "method" como parámetro.
+  // Asegúrate de que tu RootStackParamList declare PomodoroIntro
+  // (por ejemplo: PomodoroIntro: { methodId: number } )
+  // -----------------------------------------
   const handleViewStepByStep = (method: StudyMethod) => {
-    // navegación por nombre (usa tus rutas reales)
     const name = method.nombre_metodo.toLowerCase();
+
     if (name.includes("pomodoro")) {
-      navigation.navigate("PomodoroIntro" as any, { methodId: method.id_metodo });
+      // Navega a PomodoroIntro y pasa el método completo (útil para evitar otro fetch)
+      navigation.navigate("PomodoroIntro" as any, { methodId: method.id_metodo, method } as any);
       return;
     }
-    // fallback: puedes mostrar modal o pantalla genérica
-    navigation.navigate("MethodSteps" as any, { methodId: method.id_metodo });
+
+    // Otros mapeos por nombre (si los tienes)
+    if (name.includes("mapa") || name.includes("mentales")) {
+      navigation.navigate("MindMapsIntro" as any, { methodId: method.id_metodo } as any);
+      return;
+    }
+
+    if (name.includes("repaso") && name.includes("espaciado")) {
+      navigation.navigate("SpacedRepetitionIntro" as any, { methodId: method.id_metodo } as any);
+      return;
+    }
+
+    // Fallback: pantalla genérica de pasos del método
+    navigation.navigate("MethodSteps" as any, { methodId: method.id_metodo } as any);
   };
 
   if (loading) {
@@ -215,7 +234,7 @@ export const StudyMethodsLibraryPage: React.FC = () => {
 
       {/* Header con botón de menú */}
       <View style={styles.headerWithMenu}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.menuButton}
           onPress={() => setSidebarVisible(true)}
         >
@@ -271,11 +290,12 @@ export const StudyMethodsLibraryPage: React.FC = () => {
 
 /* ---------------------------
    Card component (estilo como en las images)
+   Ahora la tarjeta completa es touchable para abrir la vista paso a paso.
    --------------------------- */
 const MethodCard: React.FC<{ method: StudyMethod; onView: () => void }> = ({ method, onView }) => {
   const color = method.color_hexa || COLOR_FALLBACKS[(method.id_metodo - 1) % COLOR_FALLBACKS.length];
   return (
-    <View style={styles.card}>
+    <TouchableOpacity activeOpacity={0.9} onPress={onView} style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={[styles.iconCircle, { borderColor: `${color}22` }]}>
           <Text style={[styles.iconEmoji, { backgroundColor: "transparent" }]}>{method.icon || "📚"}</Text>
@@ -300,7 +320,7 @@ const MethodCard: React.FC<{ method: StudyMethod; onView: () => void }> = ({ met
       <TouchableOpacity style={[styles.ctaButton, { backgroundColor: color }]} onPress={onView}>
         <Text style={styles.ctaText}>Ver guía paso a paso</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 };
 

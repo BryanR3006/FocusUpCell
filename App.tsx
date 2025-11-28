@@ -14,6 +14,7 @@ import StudyMethodsLibraryPage from "./src/pages/StudyMethodsLibraryPage";
 import ForgotPassword from "./src/pages/ForgotPassword";
 import ForgotPasswordCode from "./src/pages/ForgotPasswordCode";
 import ForgotPasswordReset from "./src/pages/ForgotPasswordReset";
+import PomodoroIntroScreen from "src/pages/PomodoroIntroView";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -36,6 +37,8 @@ export default function App() {
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
           <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
+
+          <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen}/>
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
