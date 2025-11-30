@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   Dimensions,
   StatusBar,
   SafeAreaView,
-  Modal,
   ActivityIndicator,
   FlatList,
   Animated,
   Easing,
+  RefreshControl,
+  Alert,
+  Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../ui/Sidebar';
 import { apiClient } from '../clientes/apiClient';
@@ -27,66 +29,52 @@ import {
   User,
   Play,
   Clock,
-  Target,
-  BarChart3,
-  TrendingUp,
-  House,
-  ChevronDown,
-  ChevronUp,
+  AlertCircle,
 } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
 
-// Tipos
+// Tipos simplificados
 interface StudyMethod {
   id: string;
-  nombre: string;
+  titulo: string;
   descripcion: string;
-  progreso?: number;
-  color?: string;
+  progreso: number;
+  color: string;
   icono?: string;
 }
 
-interface MusicItem {
+interface MusicAlbum {
   id: string;
-  nombre: string;
+  titulo: string;
   artista: string;
   genero: string;
+  portada_url?: string;
 }
 
 interface UserProgress {
   totalMethods: number;
   completedMethods: number;
   totalSessions: number;
+  totalMusic: number;
+  activeMethods: number;
+  upcomingEvents: number;
 }
 
-// Colores
 const COLORS = {
-  primary: '#8B5CF6',     // morado principal
-  secondary: '#06B6D4',   // cian/acento
+  primary: '#8B5CF6',
+  secondary: '#06B6D4',
   success: '#10B981',
   warning: '#F59E0B',
-  bgDark: '#070812',      // fondo más oscuro y uniforme
-  card: '#0B1020',        // color de tarjetas
-  surface: '#0F1724',     // superficie para bordes/sombras
-  textPrimary: '#E6EDFF', // texto principal con más contraste
-  textSecondary: '#9AA7C7', // texto secundario
+  error: '#EF4444',
+  bgDark: '#070812',
+  card: '#0B1020',
+  surface: '#0F1724',
+  textPrimary: '#E6EDFF',
+  textSecondary: '#9AA7C7',
 };
 
-/* ---------- Helpers ---------- */
-const getMethodIcon = (iconName?: string) => {
-  const icons: Record<string, any> = {
-    clock: Clock,
-    target: Target,
-    'bar-chart': BarChart3,
-    'book-open': BookOpen,
-    zap: Zap,
-    'trending-up': TrendingUp,
-  };
-  return iconName ? icons[iconName] || BookOpen : BookOpen;
-};
-
-/* ---------- Componentes ---------- */
+// Componentes helper (mantener igual que en el primer código)
 const Stat = ({ Icon, value, label, color }: any) => (
   <View style={styles.statItem}>
     <Icon size={20} color={color} />
@@ -95,59 +83,19 @@ const Stat = ({ Icon, value, label, color }: any) => (
   </View>
 );
 
-const EmptyState = ({ title, subtitle, actionLabel, onPress }: any) => (
+const EmptyState = ({ title, subtitle, actionLabel, onPress, icon: Icon }: any) => (
   <View style={styles.emptyState}>
+    {Icon && <Icon size={32} color={COLORS.textSecondary} style={{ marginBottom: 12 }} />}
     <Text style={styles.emptyTitle}>{title}</Text>
-    {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
-    {actionLabel ? (
+    {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
+    {actionLabel && (
       <TouchableOpacity style={styles.emptyButton} onPress={onPress}>
         <Text style={styles.emptyButtonText}>{actionLabel}</Text>
       </TouchableOpacity>
-    ) : null}
+    )}
   </View>
 );
 
-// Componente de Card Expandible
-const ExpandableCard = ({ 
-  title, 
-  description, 
-  icon: Icon, 
-  iconColor, 
-  isOpen, 
-  onToggle,
-  children 
-}: any) => (
-  <View style={styles.expandableCard}>
-    <TouchableOpacity
-      style={[styles.card, { borderLeftColor: iconColor }]}
-      onPress={onToggle}
-      activeOpacity={0.85}
-    >
-      <View style={styles.cardLeft}>
-        <View style={[styles.cardIcon, { backgroundColor: `${iconColor}22` }]}>
-          <Icon size={22} color={iconColor} />
-        </View>
-      </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardDesc}>{description}</Text>
-      </View>
-      <View style={styles.cardRight}>
-        {isOpen ? (
-          <ChevronUp size={20} color={COLORS.textSecondary} />
-        ) : (
-          <ChevronDown size={20} color={COLORS.textSecondary} />
-        )}
-      </View>
-    </TouchableOpacity>
-
-    <AnimatedDropdown open={isOpen}>
-      {children}
-    </AnimatedDropdown>
-  </View>
-);
-
-// Componente de Animación
 const AnimatedDropdown = ({ open, children }: any) => {
   const animation = useRef(new Animated.Value(0)).current;
 
@@ -160,9 +108,9 @@ const AnimatedDropdown = ({ open, children }: any) => {
     }).start();
   }, [open]);
 
-  const height = animation.interpolate({
+  const heightAnim = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 120],
+    outputRange: [0, 200],
   });
 
   const opacity = animation.interpolate({
@@ -170,90 +118,157 @@ const AnimatedDropdown = ({ open, children }: any) => {
     outputRange: [0, 1],
   });
 
-  if (!open) return null;
-
   return (
-    <Animated.View style={[styles.sectionDrop, { height, opacity }]}>
+    <Animated.View style={[styles.sectionDrop, { height: heightAnim, opacity }]}>
       {children}
     </Animated.View>
   );
 };
 
-/* ---------- Componente principal ---------- */
+const ExpandableCard = ({ title, description, icon: Icon, iconColor, isOpen, onToggle, children, count }: any) => (
+  <View style={styles.expandableCard}>
+    <TouchableOpacity 
+      style={[styles.card, { borderLeftColor: iconColor }]} 
+      onPress={onToggle} 
+      activeOpacity={0.85}
+    >
+      <View style={styles.cardLeft}>
+        <View style={[styles.cardIcon, { backgroundColor: `${iconColor}22` }]}>
+          <Icon size={22} color={iconColor} />
+        </View>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardDesc}>{description}</Text>
+      </View>
+      <View style={styles.cardRight}>
+        {count > 0 && (
+          <View style={[styles.badge, { backgroundColor: `${iconColor}22` }]}>
+            <Text style={[styles.badgeText, { color: iconColor }]}>{count}</Text>
+          </View>
+        )}
+        {isOpen ? <AlertCircle size={20} color={COLORS.textSecondary} /> : <AlertCircle size={20} color={COLORS.textSecondary} />}
+      </View>
+    </TouchableOpacity>
+    <AnimatedDropdown open={isOpen}>{children}</AnimatedDropdown>
+  </View>
+);
+
+// Componente principal corregido
 const Home: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [studyMethods, setStudyMethods] = useState<StudyMethod[]>([]);
-  const [musicItems, setMusicItems] = useState<MusicItem[]>([]);
+  const [activeStudyMethods, setActiveStudyMethods] = useState<StudyMethod[]>([]);
+  const [userAlbums, setUserAlbums] = useState<MusicAlbum[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>({
     totalMethods: 0,
     completedMethods: 0,
     totalSessions: 0,
+    totalMusic: 0,
+    activeMethods: 0,
+    upcomingEvents: 0,
   });
 
-  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
-
-  /** Cards abiertas */
-  const [openCards, setOpenCards] = useState<Record<string, boolean>>({
-    metodos: false,
+  const [openCards, setOpenCards] = useState({
+    metodos: true,
     musica: false,
-    sesion: false,
+    sesiones: false,
     eventos: false,
   });
 
   const toggleCard = (key: string) => {
-    setOpenCards(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setOpenCards(prev => ({ ...prev, [key]: !prev[key] }));
   };
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
 
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      const [methodsData, progressData] = await Promise.all([
-        apiClient.getStudyMethods(),
-        apiClient.getMethodProgress(),
-      ]);
+      // Datos de ejemplo (reemplazar con llamadas reales a la API)
+      const mockMethods: StudyMethod[] = [
+        {
+          id: '1',
+          titulo: 'Pomodoro',
+          descripcion: 'Técnica de gestión del tiempo',
+          progreso: 75,
+          color: COLORS.primary,
+          icono: 'clock',
+        },
+        {
+          id: '2', 
+          titulo: 'Feynman',
+          descripcion: 'Método de aprendizaje',
+          progreso: 50,
+          color: COLORS.secondary,
+          icono: 'book-open',
+        },
+      ];
 
-      setStudyMethods(Array.isArray(methodsData) ? methodsData.slice(0, 3) : []);
+      const mockAlbums: MusicAlbum[] = [
+        {
+          id: '1',
+          titulo: 'Lo-Fi Study',
+          artista: 'Study Vibes',
+          genero: 'Lo-Fi',
+        },
+        {
+          id: '2',
+          titulo: 'Classical Focus',
+          artista: 'Mozart',
+          genero: 'Clásica',
+        },
+      ];
 
-      setMusicItems([
-        { id: 'm1', nombre: 'Lo-Fi Study Beats', artista: 'Study Vibes', genero: 'Lo-Fi' },
-        { id: 'm2', nombre: 'Pianos Calm', artista: 'Relaxed', genero: 'Classical' },
-      ]);
-
+      setActiveStudyMethods(mockMethods);
+      setUserAlbums(mockAlbums);
+      
       setUserProgress({
-        totalMethods: methodsData?.length || 0,
-        completedMethods: progressData?.completedCount || 0,
-        totalSessions: progressData?.totalSessions || 0,
+        totalMethods: mockMethods.length,
+        completedMethods: mockMethods.filter(m => m.progreso >= 100).length,
+        totalSessions: 12,
+        totalMusic: mockAlbums.length,
+        activeMethods: mockMethods.filter(m => m.progreso < 100).length,
+        upcomingEvents: 2,
       });
 
     } catch (err) {
-      console.warn('Error cargando datos', err);
-      setStudyMethods([]);
-      setMusicItems([]);
+      setError('Error al cargar los datos');
+      console.error('Error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  const navigateTo = (screen: string) => navigation.navigate(screen as never);
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [loadUserData])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadUserData();
+  }, [loadUserData]);
+
+  const navigateTo = (screen: string) => {
+    navigation.navigate(screen as never);
+  };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator style={{ marginTop: 120 }} size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Cargando tu información...</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Cargando tu información...</Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -261,10 +276,10 @@ const Home: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bgDark} />
-
+      
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
 
-      {/* HEADER */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconRound} onPress={() => setSidebarVisible(true)}>
           <Menu size={20} color={COLORS.textPrimary} />
@@ -275,95 +290,110 @@ const Home: React.FC = () => {
         </View>
       </View>
 
+      {error && (
+        <View style={styles.errorAlert}>
+          <AlertCircle size={16} color={COLORS.error} />
+          <Text style={styles.errorAlertText}>{error}</Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          setShowScrollIndicator(y + height < height * 1.6);
-        }}
-        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Bienvenida */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>¡Hola, {user?.nombre_usuario ?? 'Usuario'}! 👋</Text>
-          <Text style={styles.welcomeSubtitle}>Tu espacio para estudiar con foco</Text>
+          <Text style={styles.welcomeTitle}>¡Hola, {user?.nombre_usuario || 'Usuario'}! 👋</Text>
+          <Text style={styles.welcomeSubtitle}>Tu progreso de estudio hoy</Text>
         </View>
 
-        {/* --------- CARDS EXPANDIBLES --------- */}
-        <View style={styles.cardsRow}>
+        <View style={styles.statsContainer}>
+          <Stat Icon={BookOpen} value={userProgress.activeMethods} label="Activos" color={COLORS.primary} />
+          <Stat Icon={Calendar} value={userProgress.completedMethods} label="Completados" color={COLORS.success} />
+          <Stat Icon={Clock} value={userProgress.totalSessions} label="Sesiones" color={COLORS.warning} />
+          <Stat Icon={Music} value={userProgress.totalMusic} label="Álbumes" color={COLORS.secondary} />
+        </View>
 
-          {/* MÉTODOS */}
+        <View style={styles.cardsRow}>
+          {/* Métodos de Estudio */}
           <ExpandableCard
-            title="Métodos"
-            description={`${userProgress.totalMethods} métodos disponibles`}
+            title="Tus Métodos"
+            description="Métodos que estás utilizando"
             icon={BookOpen}
             iconColor={COLORS.primary}
             isOpen={openCards.metodos}
             onToggle={() => toggleCard('metodos')}
+            count={activeStudyMethods.length}
           >
-            {studyMethods.length === 0 ? (
+            {activeStudyMethods.length === 0 ? (
               <EmptyState
-                title="Sin métodos"
-                subtitle="No tienes métodos en curso."
-                actionLabel="Ver métodos"
+                title="Sin métodos activos"
+                subtitle="Comienza a usar algún método de estudio"
+                actionLabel="Explorar métodos"
                 onPress={() => navigateTo('StudyMethods')}
+                icon={BookOpen}
               />
             ) : (
               <FlatList
-                data={studyMethods}
-                keyExtractor={(i) => i.id}
-                renderItem={({ item }) => {
-                  const Icon = getMethodIcon(item.icono);
-                  const color = item.color || COLORS.primary;
-                  return (
-                    <View style={styles.methodCard}>
-                      <View style={[styles.methodLeft, { backgroundColor: `${color}22` }]}>
-                        <Icon size={18} color={color} />
-                      </View>
-                      <View style={styles.methodMiddle}>
-                        <Text style={styles.methodName}>{item.nombre}</Text>
-                        <Text style={styles.methodDesc} numberOfLines={1}>{item.descripcion}</Text>
-                        <View style={styles.smallProgressBar}>
-                          <View style={[styles.smallProgressFill, { width: `${item.progreso ?? 0}%`, backgroundColor: color }]} />
-                        </View>
-                      </View>
-                      <Text style={[styles.methodPct]}>{item.progreso ?? 0}%</Text>
+                data={activeStudyMethods}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={styles.methodCard}>
+                    <View style={[styles.methodIcon, { backgroundColor: `${item.color}22` }]}>
+                      <BookOpen size={18} color={item.color} />
                     </View>
-                  );
-                }}
+                    <View style={styles.methodInfo}>
+                      <Text style={styles.methodName}>{item.titulo}</Text>
+                      <Text style={styles.methodDesc}>{item.descripcion}</Text>
+                      <View style={styles.progressBar}>
+                        <View 
+                          style={[
+                            styles.progressFill, 
+                            { width: `${item.progreso}%`, backgroundColor: item.color }
+                          ]} 
+                        />
+                      </View>
+                    </View>
+                    <Text style={[styles.methodPercent, { color: item.color }]}>
+                      {item.progreso}%
+                    </Text>
+                  </View>
+                )}
                 scrollEnabled={false}
               />
             )}
           </ExpandableCard>
 
-          {/* MÚSICA */}
+          {/* Música */}
           <ExpandableCard
-            title="Música"
-            description="Playlists para concentrarte"
+            title="Tu Música"
+            description="Álbumes para concentrarte"
             icon={Music}
             iconColor={COLORS.secondary}
             isOpen={openCards.musica}
             onToggle={() => toggleCard('musica')}
+            count={userAlbums.length}
           >
-            {musicItems.length === 0 ? (
+            {userAlbums.length === 0 ? (
               <EmptyState
-                title="Sin playlists"
-                subtitle="No tienes música aún."
+                title="Sin álbumes"
+                subtitle="Descubre música para mejorar tu concentración"
                 actionLabel="Explorar música"
                 onPress={() => navigateTo('MusicAlbums')}
+                icon={Music}
               />
             ) : (
               <FlatList
-                data={musicItems}
-                keyExtractor={(i) => i.id}
+                data={userAlbums}
+                keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <View style={styles.musicRow}>
-                    <View style={styles.musicAvatar}><Music size={16} color={COLORS.secondary} /></View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.musicTitle}>{item.nombre}</Text>
-                      <Text style={styles.musicSubtitle}>{item.artista}</Text>
+                    <View style={styles.musicAvatar}>
+                      <Music size={16} color={COLORS.secondary} />
+                    </View>
+                    <View style={styles.musicInfo}>
+                      <Text style={styles.musicTitle}>{item.titulo}</Text>
+                      <Text style={styles.musicSubtitle}>{item.artista} • {item.genero}</Text>
                     </View>
                     <TouchableOpacity style={styles.playBtn}>
                       <Play size={14} color="#fff" />
@@ -374,64 +404,15 @@ const Home: React.FC = () => {
               />
             )}
           </ExpandableCard>
-
-          {/* SESIÓN RÁPIDA */}
-          <ExpandableCard
-            title="Sesión rápida"
-            description="Comienza una sesión"
-            icon={Zap}
-            iconColor={COLORS.warning}
-            isOpen={openCards.sesion}
-            onToggle={() => toggleCard('sesion')}
-          >
-            {userProgress.totalSessions === 0 ? (
-              <EmptyState
-                title="Sin sesiones"
-                subtitle="Aún no has iniciado sesiones."
-                actionLabel="Iniciar sesión"
-                onPress={() => navigateTo('QuickSession')}
-              />
-            ) : (
-              <View>
-                <Text style={styles.sessionText}>
-                  Has completado{' '}
-                  <Text style={{ fontWeight: '800' }}>{userProgress.totalSessions}</Text> sesiones
-                </Text>
-
-                <TouchableOpacity style={styles.sessionCTA} onPress={() => navigateTo('QuickSession')}>
-                  <Play size={14} color="#fff" />
-                  <Text style={styles.sessionCTAText}>Iniciar sesión</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ExpandableCard>
-
-          {/* EVENTOS */}
-          <ExpandableCard
-            title="Eventos"
-            description="Organiza tus sesiones"
-            icon={Calendar}
-            iconColor={COLORS.success}
-            isOpen={openCards.eventos}
-            onToggle={() => toggleCard('eventos')}
-          >
-            <EmptyState
-              title="Sin eventos"
-              subtitle="No hay eventos programados."
-              actionLabel="Crear evento"
-              onPress={() => navigateTo('Events')}
-            />
-          </ExpandableCard>
-
         </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* BOTTOM NAV */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]}>
-          <House size={18} color={COLORS.primary} />
+          <BookOpen size={18} color={COLORS.primary} />
           <Text style={styles.navLabelActive}>Inicio</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navBtn} onPress={() => navigateTo('StudyMethods')}>
@@ -444,31 +425,33 @@ const Home: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity style={styles.navBtn} onPress={() => navigateTo('QuickSession')}>
           <Zap size={18} color={COLORS.textSecondary} />
-          <Text style={styles.navLabel}>Sesiones</Text>
+          <Text style={styles.navLabel}>Sesión</Text>
         </TouchableOpacity>
       </View>
-
-      {showScrollIndicator && <View style={styles.fabScroll} />}
     </SafeAreaView>
   );
 };
 
-export default Home;
-
-/* ---------- Estilos ---------- */
+// Estilos (usar los mismos del primer código con algunas adiciones)
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.bgDark },
   scrollView: { flex: 1 },
   scrollContainer: { paddingBottom: 200, paddingTop: 12 },
-
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: COLORS.textSecondary,
+    marginTop: 12,
+  },
   header: {
     height: 72,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'transparent',
-    borderBottomWidth: 0,
   },
   iconRound: {
     width: 44,
@@ -486,18 +469,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '800' },
-
-  welcomeSection: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 },
-  welcomeTitle: { color: COLORS.textPrimary, fontSize: 28, fontWeight: '900' },
-  welcomeSubtitle: { color: COLORS.textSecondary, marginTop: 6 },
-
-  cardsRow: { paddingHorizontal: 16, gap: 14 },
-
+  headerTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  welcomeSection: {
+    paddingHorizontal: 18,
+    paddingTop: 6,
+    paddingBottom: 12,
+  },
+  welcomeTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  welcomeSubtitle: {
+    color: COLORS.textSecondary,
+    marginTop: 6,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 18,
+    marginBottom: 20,
+    gap: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  statNumber: {
+    color: COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  statLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  cardsRow: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
   expandableCard: {
     marginBottom: 12,
   },
-
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -505,69 +526,196 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderLeftWidth: 6,
-    borderLeftColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 8,
-    marginVertical: 6,
   },
-
+  cardLeft: {
+    width: 60,
+    alignItems: 'center',
+  },
+  cardBody: {
+    flex: 1,
+    paddingLeft: 12,
+  },
+  cardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  cardDesc: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginTop: 6,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontWeight: '800',
+    fontSize: 12,
+  },
   sectionDrop: {
     backgroundColor: COLORS.card,
     padding: 14,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
-    borderWidth: 0.5,
-    borderColor: COLORS.surface,
-    marginTop: -6,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 18,
+  },
+  emptyTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  methodIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  methodInfo: {
+    flex: 1,
+  },
+  methodName: {
+    color: COLORS.textPrimary,
+    fontWeight: '800',
+  },
+  methodDesc: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    marginTop: 8,
     overflow: 'hidden',
   },
-
-  cardLeft: { width: 60, alignItems: 'center' },
-  cardBody: { flex: 1, paddingLeft: 12 },
-  cardRight: { width: 28, alignItems: 'center' },
-  cardIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800' },
-  cardDesc: { color: COLORS.textSecondary, fontSize: 13, marginTop: 6 },
-
-  statItem: { flex: 1, alignItems: 'center' },
-  statNumber: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800', marginTop: 6 },
-  statLabel: { color: COLORS.textSecondary, fontSize: 12, marginTop: 4 },
-
-  emptyState: { alignItems: 'center', padding: 18 },
-  emptyTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800', marginBottom: 6 },
-  emptySubtitle: { color: COLORS.textSecondary, textAlign: 'center', marginBottom: 12 },
-  emptyButton: { backgroundColor: COLORS.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
-  emptyButtonText: { color: '#fff', fontWeight: '700' },
-
-  methodCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  methodLeft: { width: 52, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  methodMiddle: { flex: 1 },
-  methodName: { color: COLORS.textPrimary, fontWeight: '900', fontSize: 14 },
-  methodDesc: { color: COLORS.textSecondary, fontSize: 12, marginTop: 4 },
-  smallProgressBar: { height: 8, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, marginTop: 10, overflow: 'hidden' },
-  smallProgressFill: { height: '100%', borderRadius: 8 },
-  methodPct: { width: 48, textAlign: 'right', fontWeight: '800', color: COLORS.textPrimary },
-
-  musicRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  musicAvatar: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(139,92,246,0.12)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  musicTitle: { color: COLORS.textPrimary, fontWeight: '800' },
-  musicSubtitle: { color: COLORS.textSecondary, fontSize: 12 },
-  playBtn: { backgroundColor: COLORS.secondary, padding: 10, borderRadius: 10 },
-
-  sessionText: { color: COLORS.textPrimary, marginBottom: 8 },
-  sessionCTA: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, marginTop: 10 },
-  sessionCTAText: { color: '#fff', marginLeft: 10, fontWeight: '800' },
-
-  bottomNav: { position: 'absolute', bottom: 14, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'transparent' },
-  navBtn: { alignItems: 'center', justifyContent: 'center' },
-  navBtnActive: { backgroundColor: 'rgba(139,92,246,0.12)', padding: 10, borderRadius: 12 },
-  navLabel: { color: COLORS.textSecondary, fontSize: 11, marginTop: 4 },
-  navLabelActive: { color: COLORS.primary, fontSize: 11, marginTop: 4, fontWeight: '800' },
-
-  fabScroll: { position: 'absolute', bottom: 100, right: 20, width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.03)' },
-
-  loadingText: { color: COLORS.textSecondary, textAlign: 'center', marginTop: 12 },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  methodPercent: {
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  musicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  musicAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(6,182,212,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  musicInfo: {
+    flex: 1,
+  },
+  musicTitle: {
+    color: COLORS.textPrimary,
+    fontWeight: '800',
+  },
+  musicSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+  },
+  playBtn: {
+    backgroundColor: COLORS.secondary,
+    padding: 10,
+    borderRadius: 10,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 14,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(11, 16, 32, 0.9)',
+    borderRadius: 16,
+    paddingVertical: 8,
+  },
+  navBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  navBtnActive: {
+    backgroundColor: 'rgba(139,92,246,0.12)',
+    borderRadius: 12,
+  },
+  navLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    marginTop: 4,
+  },
+  navLabelActive: {
+    color: COLORS.primary,
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '800',
+  },
+  errorAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.error}22`,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  errorAlertText: {
+    flex: 1,
+    color: COLORS.error,
+    fontWeight: '600',
+  },
 });
+
+export default Home;

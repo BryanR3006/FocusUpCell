@@ -17,7 +17,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RootStackParamList } from "../types/navigation";
-// Removido: import { apiClient } - no es necesario
 
 type PomodoroRouteProp = RouteProp<RootStackParamList, "PomodoroIntro">;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -43,19 +42,18 @@ const exampleMethod = {
 };
 
 const PomodoroIntroScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavProp>();
   const route = useRoute<PomodoroRouteProp>();
   const methodIdParam = route.params?.methodId;
-  const passedMethod = route.params?.methodId;
 
-  const [method, setMethod] = useState<any | null>(passedMethod ?? null);
-  const [loading, setLoading] = useState<boolean>(!passedMethod);
+  const [method, setMethod] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   const [config, setConfig] = useState<PomodoroConfig>({ workTime: 25, breakTime: 5 });
 
   useEffect(() => {
-    // load config from storage
+    // Cargar configuración guardada
     (async () => {
       try {
         const saved = await AsyncStorage.getItem("pomodoro-config");
@@ -67,17 +65,11 @@ const PomodoroIntroScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (passedMethod) {
-      setMethod(passedMethod);
-      setLoading(false);
-      return;
-    }
-
     const fetchMethod = async () => {
       try {
         setLoading(true);
         setError("");
-        // Fallback a ejemplo local (puedes integrar con tu API aquí si lo necesitas)
+        // Usar método de ejemplo local
         setMethod(exampleMethod);
       } catch (err) {
         console.warn("Error fetching method", err);
@@ -87,8 +79,8 @@ const PomodoroIntroScreen: React.FC = () => {
       }
     };
 
-    if (!method) fetchMethod();
-  }, [methodIdParam, passedMethod]);
+    fetchMethod();
+  }, [methodIdParam]);
 
   const openConfig = () => setShowConfigModal(true);
   const closeConfig = () => setShowConfigModal(false);
@@ -106,17 +98,17 @@ const PomodoroIntroScreen: React.FC = () => {
 
   const startPomodoro = async () => {
     try {
+      // Guardar configuración antes de navegar
       await AsyncStorage.setItem("pomodoro-config", JSON.stringify(config));
+      
+      // Obtener el ID del método
+      const methodId = method?.id_metodo || methodIdParam || 1;
+      
+      // Navegar a PomodoroExecute con el methodId
+      navigation.navigate("PomodoroExecute", { methodId: Number(methodId) });
     } catch (e) {
-      // no blocking
-    }
-    if (method?.id_metodo) {
-      navigation.navigate("PomodoroExecute", { methodId: Number(method) });
-    } else if (methodIdParam) {
-      navigation.navigate("PomodoroExecute", { methodId: Number(methodIdParam) });
-    } else {
-      // fallback
-      navigation.navigate("PomodoroExecute", { methodId: 1 });
+      console.error("Error al iniciar Pomodoro:", e);
+      Alert.alert("Error", "No se pudo iniciar la sesión de Pomodoro");
     }
   };
 
@@ -139,7 +131,10 @@ const PomodoroIntroScreen: React.FC = () => {
         <View style={styles.centered}>
           <Text style={styles.errorTitle}>Error al cargar datos</Text>
           <Text style={styles.errorMsg}>{error || "No se encontró el método."}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.navigate("StudyMethods")}>
+          <TouchableOpacity 
+            style={styles.retryBtn} 
+            onPress={() => navigation.navigate("StudyMethods" as any)}
+          >
             <Text style={styles.retryText}>Volver a métodos</Text>
           </TouchableOpacity>
         </View>
@@ -196,22 +191,30 @@ const PomodoroIntroScreen: React.FC = () => {
         {/* How it works */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>¿Cómo Funciona la Técnica?</Text>
-          <Text style={styles.sectionSubtitle}>Un método simple pero efectivo para mejorar tu concentración y productividad</Text>
+          <Text style={styles.sectionSubtitle}>
+            Un método simple pero efectivo para mejorar tu concentración y productividad
+          </Text>
 
           <View style={styles.steps}>
             <View style={[styles.stepCard, { borderLeftColor: methodColor }]}>
               <Text style={styles.stepTitle}>1. Elige una tarea específica</Text>
-              <Text style={styles.stepText}>Selecciona una actividad concreta que quieras completar en el tiempo del pomodoro.</Text>
+              <Text style={styles.stepText}>
+                Selecciona una actividad concreta que quieras completar en el tiempo del pomodoro.
+              </Text>
             </View>
 
             <View style={[styles.stepCard, { borderLeftColor: "#F59E0B" }]}>
               <Text style={styles.stepTitle}>2. Trabaja durante {config.workTime} minutos</Text>
-              <Text style={styles.stepText}>Configura un temporizador y concéntrate en la tarea. Evita distracciones.</Text>
+              <Text style={styles.stepText}>
+                Configura un temporizador y concéntrate en la tarea. Evita distracciones.
+              </Text>
             </View>
 
             <View style={[styles.stepCard, { borderLeftColor: "#FBBF24" }]}>
               <Text style={styles.stepTitle}>3. Descansa {config.breakTime} minutos</Text>
-              <Text style={styles.stepText}>Toma un breve descanso, estírate y vuelve con energía.</Text>
+              <Text style={styles.stepText}>
+                Toma un breve descanso, estírate y vuelve con energía.
+              </Text>
             </View>
           </View>
         </View>
@@ -239,7 +242,10 @@ const PomodoroIntroScreen: React.FC = () => {
             <Text style={styles.configBtnText}>Configurar Técnica</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.startBtn, { backgroundColor: methodColor }]} onPress={() => startPomodoro()}>
+          <TouchableOpacity 
+            style={[styles.startBtn, { backgroundColor: methodColor }]} 
+            onPress={() => startPomodoro()}
+          >
             <Text style={styles.startBtnText}>Comenzar Técnica Pomodoro</Text>
           </TouchableOpacity>
         </View>

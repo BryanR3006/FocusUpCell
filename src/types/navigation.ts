@@ -9,7 +9,11 @@ export type RootStackParamList = {
   ForgotPasswordReset: undefined;
   StudyMethods: undefined;
   PomodoroIntro: { methodId: number };
+  PomodoroExecute: { 
+    methodId: number;
+    resumeProgress?: number;
+    sessionId?: string;
+  };
   MindMapsIntro: { methodId: number };
   SpacedRepetitionIntro: { methodId: number };
- 
 };

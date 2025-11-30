@@ -6,9 +6,12 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
-  Image,
   Dimensions,
   Animated,
+  SafeAreaView,
+  Pressable,
+  ActivityIndicator,
+  Easing,
 } from "react-native";
 import {
   Home,
@@ -26,6 +29,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
 
 const { width, height } = Dimensions.get("window");
+const SIDEBAR_MAX_WIDTH = 420;
 
 interface SidebarProps {
   visible: boolean;
@@ -40,36 +44,121 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigation = useNavigation();
   const { user, logout, loading } = useAuth();
-  const [focusToolsOpen, setFocusToolsOpen] = React.useState(false);
-  const slideAnim = React.useRef(new Animated.Value(-width * 0.8)).current;
 
+  const sidebarWidth = Math.min(width * 0.85, SIDEBAR_MAX_WIDTH);
+  const slideAnim = React.useRef(new Animated.Value(-sidebarWidth)).current;
+  const overlayAnim = React.useRef(new Animated.Value(0)).current; // 0..0.5
+  const submenuAnim = React.useRef(new Animated.Value(0)).current; // 0..1
+  const [focusToolsOpen, setFocusToolsOpen] = React.useState(false);
+  const [logoutLoading, setLogoutLoading] = React.useState(false);
+
+  // Abrir / cerrar con animación
   React.useEffect(() => {
     if (visible) {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(overlayAnim, {
+          toValue: 0.5,
+          duration: 250,
+          useNativeDriver: false,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+      ]).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: -width * 0.8,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      // Si parent cierra el modal (visible -> false), aseguramos que quede fuera
+      Animated.parallel([
+        Animated.timing(overlayAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+          easing: Easing.in(Easing.cubic),
+        }),
+        Animated.timing(slideAnim, {
+          toValue: -sidebarWidth,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+      ]).start();
     }
-  }, [visible]);
+  }, [visible, sidebarWidth]);
+
+  // Toggle submenu con animación
+  const toggleSubmenu = () => {
+    const toValue = focusToolsOpen ? 0 : 1;
+    setFocusToolsOpen(!focusToolsOpen);
+    Animated.timing(submenuAnim, {
+      toValue,
+      duration: 220,
+      useNativeDriver: false,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  };
+
+  // Cierra con animación y luego llama onClose
+  const closeWithAnimation = (callback?: () => void) => {
+    Animated.parallel([
+      Animated.timing(overlayAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -sidebarWidth,
+        duration: 240,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+    ]).start(() => {
+      callback && callback();
+      onClose();
+    });
+  };
 
   const handleNavigation = (path: string) => {
-    onClose();
-    navigation.navigate(path as never);
+    closeWithAnimation(() => {
+      // navegamos después de cerrar animación
+      navigation.navigate(path as never);
+    });
   };
 
   const handleLogout = async () => {
+    if (logoutLoading) return;
+    setLogoutLoading(true);
     try {
+      // Primero animamos el cierre del sidebar y esperamo a que termine
+      await new Promise<void>((resolve) => {
+        Animated.parallel([
+          Animated.timing(overlayAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.cubic),
+          }),
+          Animated.timing(slideAnim, {
+            toValue: -sidebarWidth,
+            duration: 240,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.cubic),
+          }),
+        ]).start(() => resolve());
+      });
+
+      // Llamamos al logout del contexto (esperamos su resultado)
       await logout();
+
+      // Avisa al padre que cierre (si tu logout ya navega, esto no rompe nada)
       onClose();
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setLogoutLoading(false);
     }
   };
 
@@ -125,126 +214,114 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalContainer}>
-        {/* Backdrop */}
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+  // submenu altura interpolada (segura): cada item ~48
+  const submenuHeight = submenuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, submenuItems.length * 52],
+  });
+  const submenuOpacity = submenuAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const chevronRotate = submenuAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
 
-        {/* Sidebar Content */}
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={() => closeWithAnimation()}>
+      <View style={styles.modalContainer}>
+        {/* Backdrop animado */}
+        <Pressable style={{ flex: 1 }} onPress={() => closeWithAnimation()}>
+          <Animated.View style={[styles.backdrop, { backgroundColor: overlayAnim.interpolate({
+            inputRange: [0, 0.5],
+            outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.5)"]
+          }) }]} />
+        </Pressable>
+
+        {/* Sidebar */}
         <Animated.View
           style={[
             styles.sidebar,
             {
+              width: sidebarWidth,
               transform: [{ translateX: slideAnim }],
             },
           ]}
         >
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* User Info */}
-            <View style={styles.userSection}>
-              <View style={styles.userImagePlaceholder}>
-                <Text style={styles.userImageText}>
-                  {user?.nombre_usuario?.charAt(0) || "U"}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {user?.nombre_usuario || "Usuario"}
-                </Text>
-                <Text style={styles.userId}>
-                  #{user?.id_usuario
-                    ? user.id_usuario.toString().padStart(6, "0")
-                    : "000000"}
-                </Text>
-              </View>
-            </View>
-
-            {/* Navigation Menu */}
-            <View style={styles.menuSection}>
-              {menuItems.map((item, index) => (
-                <View key={index}>
-                  <TouchableOpacity
-                    style={[
-                      styles.menuItem,
-                      item.isActive && styles.menuItemActive,
-                    ]}
-                    onPress={() =>
-                      item.path ? handleNavigation(item.path) : setFocusToolsOpen(!focusToolsOpen)
-                    }
-                  >
-                    <View style={styles.menuItemLeft}>
-                      <item.icon
-                        size={20}
-                        color={item.isActive ? "#FFA200" : "#9CA3AF"}
-                      />
-                      <Text
-                        style={[
-                          styles.menuLabel,
-                          item.isActive && styles.menuLabelActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </View>
-                    {item.hasSubmenu && (
-                      <ChevronDown
-                        size={16}
-                        color="#9CA3AF"
-                        style={[
-                          styles.chevron,
-                          focusToolsOpen && styles.chevronRotated,
-                        ]}
-                      />
-                    )}
-                  </TouchableOpacity>
-
-                  {/* Submenu */}
-                  {item.hasSubmenu && focusToolsOpen && (
-                    <View style={styles.submenu}>
-                      {submenuItems.map((subItem, subIndex) => (
-                        <TouchableOpacity
-                          key={subIndex}
-                          style={styles.submenuItem}
-                          onPress={() => handleNavigation(subItem.path)}
-                        >
-                          <subItem.icon size={16} color="#6B7280" />
-                          <Text style={styles.submenuLabel}>
-                            {subItem.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+          <SafeAreaView style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.userSection}>
+                <View style={styles.userImagePlaceholder}>
+                  <Text style={styles.userImageText}>
+                    {user?.nombre_usuario?.charAt(0) || "U"}
+                  </Text>
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{user?.nombre_usuario || "Usuario"}</Text>
+                  <Text style={styles.userId}>
+                    #{user?.id_usuario ? user.id_usuario.toString().padStart(6, "0") : "000000"}
+                  </Text>
+                </View>
+              </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            disabled={loading}
-          >
-            {loading ? (
-              <View style={styles.loadingSpinner} />
-            ) : (
-              <LogOut size={20} color="#FFFFFF" />
-            )}
-            <Text style={styles.logoutText}>
-              {loading ? "Cerrando sesión..." : "Cerrar Sesión"}
-            </Text>
-          </TouchableOpacity>
+              <View style={styles.menuSection}>
+                {menuItems.map((item, index) => (
+                  <View key={index}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[styles.menuItem, item.isActive && styles.menuItemActive]}
+                      onPress={() =>
+                        item.path ? handleNavigation(item.path) : toggleSubmenu()
+                      }
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <item.icon size={20} color={item.isActive ? "#FFA200" : "#9CA3AF"} />
+                        <Text style={[styles.menuLabel, item.isActive && styles.menuLabelActive]}>
+                          {item.label}
+                        </Text>
+                      </View>
+
+                      {item.hasSubmenu ? (
+                        <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+                          <ChevronDown size={16} color="#9CA3AF" />
+                        </Animated.View>
+                      ) : null}
+                    </TouchableOpacity>
+
+                    {/* Submenu animado */}
+                    {item.hasSubmenu && (
+                      <Animated.View style={[styles.submenu, { height: submenuHeight, opacity: submenuOpacity }]}>
+                        {submenuItems.map((subItem, subIndex) => (
+                          <TouchableOpacity
+                            key={subIndex}
+                            style={styles.submenuItem}
+                            onPress={() => handleNavigation(subItem.path)}
+                          >
+                            <subItem.icon size={16} color="#6B7280" />
+                            <Text style={styles.submenuLabel}>{subItem.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </Animated.View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Logout en bottom */}
+            <View style={styles.logoutContainer}>
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+                disabled={logoutLoading || loading}
+                activeOpacity={0.8}
+              >
+                {(logoutLoading || loading) ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <LogOut size={20} color="#FFFFFF" />
+                )}
+                <Text style={styles.logoutText}>
+                  {logoutLoading || loading ? "Cerrando sesión..." : "Cerrar Sesión"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
         </Animated.View>
       </View>
     </Modal>
@@ -257,21 +334,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    ...StyleSheet.absoluteFillObject,
   },
   sidebar: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    width: width * 0.8,
     backgroundColor: "#232323",
     borderRightWidth: 1,
     borderRightColor: "#333",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 2, height: 0 },
+    elevation: 8,
   },
-  scrollView: {
-    flex: 1,
+  scrollContent: {
+    paddingBottom: 24,
   },
   userSection: {
     alignItems: "center",
@@ -286,7 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   userImageText: {
     color: "#FFFFFF",
@@ -307,16 +386,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   menuSection: {
-    padding: 16,
+    padding: 12,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   menuItemActive: {
     backgroundColor: "#2A2A2A",
@@ -335,23 +414,16 @@ const styles = StyleSheet.create({
   menuLabelActive: {
     color: "#FFA200",
   },
-  chevron: {
-    transform: [{ rotate: "0deg" }],
-  },
-  chevronRotated: {
-    transform: [{ rotate: "180deg" }],
-  },
   submenu: {
-    marginLeft: 32,
+    overflow: "hidden",
+    marginLeft: 28,
     marginTop: 4,
-    marginBottom: 8,
-    gap: 4,
   },
   submenuItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
     gap: 12,
   },
@@ -359,27 +431,26 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontSize: 14,
   },
+  logoutContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#EF4444",
-    margin: 16,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
     gap: 12,
+    justifyContent: "center",
   },
   logoutText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
-  },
-  loadingSpinner: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    borderTopColor: "transparent",
-    borderRadius: 10,
+    marginLeft: 8,
   },
 });
 

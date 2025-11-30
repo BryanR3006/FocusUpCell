@@ -10,11 +10,11 @@ import Register from "./src/pages/Register";
 import Confirmation from "./src/pages/Confirmation";
 import SurveyPage from "./src/pages/Survey";
 import StudyMethodsLibraryPage from "./src/pages/StudyMethodsLibraryPage";
-
 import ForgotPassword from "./src/pages/ForgotPassword";
 import ForgotPasswordCode from "./src/pages/ForgotPasswordCode";
 import ForgotPasswordReset from "./src/pages/ForgotPasswordReset";
-import PomodoroIntroScreen from "src/pages/PomodoroIntroView";
+import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
+import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -37,8 +37,8 @@ export default function App() {
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
           <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
-
-          <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen}/>
+          <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
+          <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

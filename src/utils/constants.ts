@@ -19,4 +19,8 @@ export const API_ENDPOINTS = {
   SESSION_PROGRESS: "/reports/sessions",
   NOTIFICATIONS_PREFERENCES: "/notificaciones/preferencias",
   NOTIFICATIONS_SCHEDULED: "/notificaciones/programadas",
+  MUSIC_ALBUMS: "/musica",
+  MUSIC_LIBRARY: "/musica",
+  SESSIONS: "/sesiones",
+  USER_SESSIONS: "/sesiones",
 } as const;
