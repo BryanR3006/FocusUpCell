@@ -57,7 +57,7 @@ const ConfirmationPage = () => {
       const payload = {
         nombre_usuario: formData.nombre_usuario,
         correo: formData.correo,
-        contrasena: formData.password,
+        contrasena: formData.contrasena,
         fecha_nacimiento: fechaNacimiento,
         pais: formData.pais || "",
         genero: formData.genero || "",
@@ -164,9 +164,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#333",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   logo: {
     width: 190,

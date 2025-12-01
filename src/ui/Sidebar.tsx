@@ -24,6 +24,7 @@ import {
   BookOpen,
   Music,
   Calendar,
+  User,
 } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
@@ -47,8 +48,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const sidebarWidth = Math.min(width * 0.85, SIDEBAR_MAX_WIDTH);
   const slideAnim = React.useRef(new Animated.Value(-sidebarWidth)).current;
-  const overlayAnim = React.useRef(new Animated.Value(0)).current; // 0..0.5
-  const submenuAnim = React.useRef(new Animated.Value(0)).current; // 0..1
+  const overlayAnim = React.useRef(new Animated.Value(0)).current;
+  const submenuAnim = React.useRef(new Animated.Value(0)).current;
   const [focusToolsOpen, setFocusToolsOpen] = React.useState(false);
   const [logoutLoading, setLogoutLoading] = React.useState(false);
 
@@ -70,7 +71,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }),
       ]).start();
     } else {
-      // Si parent cierra el modal (visible -> false), aseguramos que quede fuera
       Animated.parallel([
         Animated.timing(overlayAnim, {
           toValue: 0,
@@ -116,14 +116,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         easing: Easing.in(Easing.cubic),
       }),
     ]).start(() => {
-      callback && callback();
+      callback?.();
       onClose();
     });
   };
 
   const handleNavigation = (path: string) => {
     closeWithAnimation(() => {
-      // navegamos después de cerrar animación
       navigation.navigate(path as never);
     });
   };
@@ -132,7 +131,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (logoutLoading) return;
     setLogoutLoading(true);
     try {
-      // Primero animamos el cierre del sidebar y esperamo a que termine
       await new Promise<void>((resolve) => {
         Animated.parallel([
           Animated.timing(overlayAnim, {
@@ -150,10 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ]).start(() => resolve());
       });
 
-      // Llamamos al logout del contexto (esperamos su resultado)
       await logout();
-
-      // Avisa al padre que cierre (si tu logout ya navega, esto no rompe nada)
       onClose();
     } catch (error) {
       console.error("Logout failed:", error);
@@ -170,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       isActive: currentPage === "dashboard",
     },
     {
-      icon: Settings,
+      icon: User, // Cambiado de Settings a User para perfil
       label: "Perfil",
       path: "Profile",
       isActive: currentPage === "profile",
@@ -214,23 +209,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // submenu altura interpolada (segura): cada item ~48
+  // Interpolaciones
   const submenuHeight = submenuAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, submenuItems.length * 52],
   });
-  const submenuOpacity = submenuAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const chevronRotate = submenuAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
+  const submenuOpacity = submenuAnim.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [0, 1] 
+  });
+  const chevronRotate = submenuAnim.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: ["0deg", "180deg"] 
+  });
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={() => closeWithAnimation()}>
+    <Modal 
+      visible={visible} 
+      transparent 
+      animationType="none" 
+      onRequestClose={() => closeWithAnimation()}
+    >
       <View style={styles.modalContainer}>
         {/* Backdrop animado */}
         <Pressable style={{ flex: 1 }} onPress={() => closeWithAnimation()}>
-          <Animated.View style={[styles.backdrop, { backgroundColor: overlayAnim.interpolate({
-            inputRange: [0, 0.5],
-            outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.5)"]
-          }) }]} />
+          <Animated.View style={[styles.backdrop, { 
+            backgroundColor: overlayAnim.interpolate({
+              inputRange: [0, 0.5],
+              outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.5)"]
+            }) 
+          }]} />
         </Pressable>
 
         {/* Sidebar */}
@@ -248,7 +256,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <View style={styles.userSection}>
                 <View style={styles.userImagePlaceholder}>
                   <Text style={styles.userImageText}>
-                    {user?.nombre_usuario?.charAt(0) || "U"}
+                    {user?.nombre_usuario?.charAt(0)?.toUpperCase() || "U"}
                   </Text>
                 </View>
                 <View style={styles.userInfo}>
@@ -270,7 +278,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }
                     >
                       <View style={styles.menuItemLeft}>
-                        <item.icon size={20} color={item.isActive ? "#FFA200" : "#9CA3AF"} />
+                        <item.icon 
+                          size={20} 
+                          color={item.isActive ? "#3B82F6" : "#9CA3AF"} 
+                        />
                         <Text style={[styles.menuLabel, item.isActive && styles.menuLabelActive]}>
                           {item.label}
                         </Text>
@@ -285,7 +296,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {/* Submenu animado */}
                     {item.hasSubmenu && (
-                      <Animated.View style={[styles.submenu, { height: submenuHeight, opacity: submenuOpacity }]}>
+                      <Animated.View style={[
+                        styles.submenu, 
+                        { 
+                          height: submenuHeight, 
+                          opacity: submenuOpacity 
+                        }
+                      ]}>
                         {submenuItems.map((subItem, subIndex) => (
                           <TouchableOpacity
                             key={subIndex}
@@ -341,13 +358,9 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "#232323",
+    backgroundColor: "#171717",
     borderRightWidth: 1,
     borderRightColor: "#333",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 2, height: 0 },
-    elevation: 8,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -398,7 +411,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   menuItemActive: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#232323",
   },
   menuItemLeft: {
     flexDirection: "row",
@@ -412,7 +425,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   menuLabelActive: {
-    color: "#FFA200",
+    color: "#3B82F6",
+    fontWeight: "600",
   },
   submenu: {
     overflow: "hidden",

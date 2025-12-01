@@ -8,6 +8,7 @@ export const API_ENDPOINTS = {
   PROFILE: "/users/profile",
   REGISTER: "/users/register",
   DELETE_ACCOUNT: "/users/delete",
+  CHANGE_PASSWORD: "/users/change-password",
   REQUEST_PASSWORD_RESET: "/users/request-password-reset",
   RESET_PASSWORD_WITH_CODE: "/users/reset-password-with-code",
   STUDY_METHODS: "/metodos-estudio",
@@ -23,4 +24,6 @@ export const API_ENDPOINTS = {
   MUSIC_LIBRARY: "/musica",
   SESSIONS: "/sesiones",
   USER_SESSIONS: "/sesiones",
+  INTERESES: "/intereses",
+  DISTRACCIONES: "/distracciones",
 } as const;

@@ -15,6 +15,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
+import { SessionData, PomodoroConfig } from "../types/session";
+import { StudyMethod } from "../types/studyMethod";
 
 import {
   CheckCircle,
@@ -27,27 +29,6 @@ import {
 /* -------------------- Types -------------------- */
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 type RoutePropType = RouteProp<RootStackParamList, "PomodoroExecute">;
-
-interface PomodoroConfig {
-  workTime: number;
-  breakTime: number;
-}
-
-interface SessionData {
-  id: string;
-  methodId: number;
-  id_metodo_realizado: number;
-  startTime: string;
-  progress: number;
-  status: "en_progreso" | "completado";
-}
-
-interface StudyMethod {
-  id_metodo: number;
-  titulo?: string;
-  descripcion?: string;
-  color_hexa?: string;
-}
 
 /* -------------------- Timer Component -------------------- */
 const Timer: React.FC<{
@@ -213,12 +194,14 @@ const PomodoroExecutionScreen: React.FC = () => {
       try {
         setMethod({
           id_metodo: Number(methodIdParam) || 1,
+          nombre_metodo: "Técnica Pomodoro",
           titulo: "Técnica Pomodoro",
           descripcion: "Divide tu tiempo en bloques de trabajo y descanso",
           color_hexa: "#EF4444",
+          beneficios: [],
         });
       } catch (err) {
-        setMethod({ id_metodo: Number(methodIdParam) || 1, titulo: "Técnica Pomodoro" });
+        setMethod({ id_metodo: Number(methodIdParam) || 1, nombre_metodo: "Técnica Pomodoro", titulo: "Técnica Pomodoro", beneficios: [] });
       } finally {
         setLoading(false);
       }

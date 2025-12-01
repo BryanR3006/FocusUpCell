@@ -10,22 +10,9 @@ import {
 } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { LOCAL_METHOD_ASSETS } from "../utils/methodAssets";
+import { StudyMethod, Benefit } from "../types/studyMethod";
 
 const { width } = Dimensions.get("window");
-
-interface Benefit {
-  id_beneficio: number;
-  descripcion_beneficio: string;
-}
-
-interface StudyMethod {
-  id_metodo: number;
-  nombre_metodo: string;
-  descripcion: string;
-  beneficios: Benefit[];
-  url_imagen?: string;
-  color_hexa?: string;
-}
 
 interface CardProps {
   method: StudyMethod;
@@ -87,12 +74,7 @@ export const Card: React.FC<CardProps> = ({ method, onViewStepByStep }) => {
           transform: [{ scale: scaleAnim }],
           opacity: opacityAnim,
           borderLeftColor: methodColor,
-          // Reemplazar shadow por elevation para React Native
           elevation: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
         },
       ]}
     >
@@ -293,10 +275,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   buttonText: {
     color: "#FFFFFF",

@@ -20,6 +20,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../ui/Sidebar';
 import { apiClient } from '../clientes/apiClient';
+import { MusicAlbum } from '../types/music';
 import {
   BookOpen,
   Calendar,
@@ -42,14 +43,6 @@ interface StudyMethod {
   progreso: number;
   color: string;
   icono?: string;
-}
-
-interface MusicAlbum {
-  id: string;
-  titulo: string;
-  artista: string;
-  genero: string;
-  portada_url?: string;
 }
 
 interface UserProgress {
@@ -182,7 +175,7 @@ const Home: React.FC = () => {
     eventos: false,
   });
 
-  const toggleCard = (key: string) => {
+  const toggleCard = (key: keyof typeof openCards) => {
     setOpenCards(prev => ({ ...prev, [key]: !prev[key] }));
   };
 

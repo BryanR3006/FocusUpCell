@@ -18,24 +18,12 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import { Sidebar } from "../ui/Sidebar"; // Asegúrate de que la ruta sea correcta
+import { StudyMethod, Benefit } from "../types/studyMethod";
 
 /* ICONS: uso emojis para que no dependas de libs externas; si prefieres lucide-react-native,
-   reemplaza los emojis por los componentes icon. */
+    reemplaza los emojis por los componentes icon. */
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-
-interface Benefit {
-  id_beneficio: number;
-  descripcion_beneficio: string;
-}
-interface StudyMethod {
-  id_metodo: number;
-  nombre_metodo: string;
-  descripcion: string;
-  beneficios: Benefit[];
-  icon?: string; // emoji o ruta
-  color_hexa?: string; // color del botón y título
-}
 
 const COLOR_FALLBACKS = [
   "#F43F5E", // rojo (pomodoro)
@@ -147,7 +135,7 @@ export const StudyMethodsLibraryPage: React.FC = () => {
         const token = await AsyncStorage.getItem("token");
         // si necesitas redirigir cuando no hay token:
         if (!token && isAuthenticated === false) {
-          navigation.navigate("Login" as any);
+          navigation.navigate("Login");
           return;
         }
 
@@ -182,23 +170,38 @@ export const StudyMethodsLibraryPage: React.FC = () => {
 
     if (name.includes("pomodoro")) {
       // Navega a PomodoroIntro y pasa el método completo (útil para evitar otro fetch)
-      navigation.navigate("PomodoroIntro" as any, { methodId: method.id_metodo, method } as any);
+      navigation.navigate("PomodoroIntro", { methodId: method.id_metodo, method });
       return;
     }
 
     // Otros mapeos por nombre (si los tienes)
     if (name.includes("mapa") || name.includes("mentales")) {
-      navigation.navigate("MindMapsIntro" as any, { methodId: method.id_metodo } as any);
+      navigation.navigate("MindMapsIntro", { methodId: method.id_metodo });
       return;
     }
 
     if (name.includes("repaso") && name.includes("espaciado")) {
-      navigation.navigate("SpacedRepetitionIntro" as any, { methodId: method.id_metodo } as any);
+      navigation.navigate("SpacedRepetitionIntro", { methodId: method.id_metodo });
+      return;
+    }
+
+    if (name.includes("práctica") && name.includes("activa")) {
+      navigation.navigate("ActiveRecallIntro", { methodId: method.id_metodo });
+      return;
+    }
+
+    if (name.includes("feynman")) {
+      navigation.navigate("FeynmanIntro", { methodId: method.id_metodo });
+      return;
+    }
+
+    if (name.includes("cornell")) {
+      navigation.navigate("CornellIntro", { methodId: method.id_metodo });
       return;
     }
 
     // Fallback: pantalla genérica de pasos del método
-    navigation.navigate("MethodSteps" as any, { methodId: method.id_metodo } as any);
+    navigation.navigate("MethodSteps", { methodId: method.id_metodo });
   };
 
   if (loading) {
@@ -309,8 +312,8 @@ const MethodCard: React.FC<{ method: StudyMethod; onView: () => void }> = ({ met
 
       <Text style={styles.benefitsTitle}>Beneficios</Text>
       <View style={styles.benefitsList}>
-        {method.beneficios.map((b) => (
-          <View key={b.id_beneficio} style={styles.benefitItem}>
+        {method.beneficios.map((b: Benefit) => (
+          <View style={styles.benefitItem}>
             <View style={styles.bullet} />
             <Text style={styles.benefitText}>{b.descripcion_beneficio}</Text>
           </View>
@@ -419,10 +422,6 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.03)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
     elevation: 6,
   },
   cardHeader: {
