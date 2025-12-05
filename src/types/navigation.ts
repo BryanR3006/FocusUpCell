@@ -22,5 +22,6 @@ export type RootStackParamList = {
   MethodSteps: { methodId: number };
   Profile: undefined;
   MusicAlbums: undefined;
+  AlbumDetail: { albumId: number; albumName?: string };
   QuickSession: undefined;
 };

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
+import { API_BASE_URL, API_ENDPOINTS } from 'utils/constants';
 
 class ApiError extends Error {
   constructor(public status: number, message: string, public data?: any) {
