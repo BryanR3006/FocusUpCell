@@ -15,7 +15,19 @@ import ForgotPasswordCode from "./src/pages/ForgotPasswordCode";
 import ForgotPasswordReset from "./src/pages/ForgotPasswordReset";
 import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
 import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
-import ProfileScreen from "./src/pages/profilpage"; 
+import ProfileScreen from "./src/pages/profilpage";
+
+// Importar todas las vistas de métodos de estudio
+import ActiveRecallIntroView from "./src/pages/ActiveRecallIntroView";
+import ActiveRecallStepsView from "./src/pages/ActiveRecallStepsView";
+import SpacedRepetitionIntroView from "./src/pages/SpacedRepetitionIntroView";
+import SpacedRepetitionStepsView from "./src/pages/SpacedRepetitionStepsView";
+import FeynmanIntroView from "./src/pages/FeynmanIntroView";
+import FeynmanStepsView from "./src/pages/FeynmanStepsView";
+import CornellIntroView from "./src/pages/CornellIntroView";
+import CornellStepsView from "./src/pages/CornellStepsView";
+import MindMapsIntroView from "./src/pages/MindMapsInfoPage";
+import MindMapsStepsView from "./src/pages/MindMapsStepsPage";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -30,6 +42,7 @@ export default function App() {
             contentStyle: { backgroundColor: "#171717" },
           }}
         >
+          {/* Rutas principales */}
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
@@ -39,17 +52,77 @@ export default function App() {
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
           <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+
+          {/* Método Pomodoro */}
           <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
           <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
-          
-          {/* Nueva ruta para Perfil */}
+
+          {/* Método Active Recall (Práctica Activa) */}
           <Stack.Screen 
-            name="Profile" 
-            component={ProfileScreen}
-            options={{
-              title: "Perfil",
-              headerShown: false,
-            }}
+            name="ActiveRecallIntro" 
+            component={ActiveRecallIntroView}
+            options={{ title: "Práctica Activa" }}
+          />
+          <Stack.Screen 
+            name="ActiveRecallSteps" 
+            component={ActiveRecallStepsView}
+            options={{ title: "Práctica Activa" }}
+          />
+
+          {/* Método Spaced Repetition (Repetición Espaciada) */}
+          <Stack.Screen 
+            name="SpacedRepetitionIntro" 
+            component={SpacedRepetitionIntroView}
+            options={{ title: "Repetición Espaciada" }}
+          />
+          <Stack.Screen 
+            name="SpacedRepetitionSteps" 
+            component={SpacedRepetitionStepsView}
+            options={{ title: "Repetición Espaciada" }}
+          />
+
+          {/* Método Feynman */}
+          <Stack.Screen 
+            name="FeynmanIntro" 
+            component={FeynmanIntroView}
+            options={{ title: "Método Feynman" }}
+          />
+          <Stack.Screen 
+            name="FeynmanSteps" 
+            component={FeynmanStepsView}
+            options={{ title: "Método Feynman" }}
+          />
+
+          {/* Método Cornell */}
+          <Stack.Screen 
+            name="CornellIntro" 
+            component={CornellIntroView}
+            options={{ title: "Método Cornell" }}
+          />
+          <Stack.Screen 
+            name="CornellSteps" 
+            component={CornellStepsView}
+            options={{ title: "Método Cornell" }}
+          />
+
+          {/* Método Mind Maps (Mapas Mentales) */}
+          <Stack.Screen 
+            name="MindMapsIntro" 
+            component={MindMapsIntroView}
+            options={{ title: "Mapas Mentales" }}
+          />
+          <Stack.Screen 
+            name="MindMapsSteps" 
+            component={MindMapsStepsView}
+            options={{ title: "Mapas Mentales" }}
+          />
+
+          {/* Ruta genérica para métodos sin vista específica */}
+          <Stack.Screen 
+            name="MethodSteps" 
+            component={PomodoroIntroScreen} // Temporal, puedes crear una vista genérica
+            options={{ title: "Método de Estudio" }}
           />
         </Stack.Navigator>
       </NavigationContainer>

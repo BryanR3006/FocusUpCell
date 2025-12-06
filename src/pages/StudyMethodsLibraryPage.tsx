@@ -313,7 +313,7 @@ const MethodCard: React.FC<{ method: StudyMethod; onView: () => void }> = ({ met
       <Text style={styles.benefitsTitle}>Beneficios</Text>
       <View style={styles.benefitsList}>
         {method.beneficios.map((b: Benefit) => (
-          <View style={styles.benefitItem}>
+          <View key={b.id_beneficio} style={styles.benefitItem}>
             <View style={styles.bullet} />
             <Text style={styles.benefitText}>{b.descripcion_beneficio}</Text>
           </View>
