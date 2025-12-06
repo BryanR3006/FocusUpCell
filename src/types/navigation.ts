@@ -23,4 +23,5 @@ export type RootStackParamList = {
   Profile: undefined;
   MusicAlbums: undefined;
   QuickSession: undefined;
+  
 };
