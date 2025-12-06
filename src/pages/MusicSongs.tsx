@@ -23,18 +23,20 @@ import {
 } from 'lucide-react-native';
 import { getAlbumById, getSongsByAlbumId } from '../utils/musicApi';
 import { getLocalAlbumImage, formatDuration } from '../utils/musicUtils';
+import { useAudio } from '../contexts/AudioContext';
 import type { Album, Song } from '../types/api';
 
 const { width } = Dimensions.get('window');
 
-export const AlbumDetail: React.FC = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
-  
-  // Asegúrate de que los parámetros existan
-  const params = route.params as { albumId?: number; albumName?: string };
-  const albumId = params?.albumId;
-  const albumName = params?.albumName;
+export const MusicSongs: React.FC = () => {
+   const navigation = useNavigation();
+   const route = useRoute();
+   const audio = useAudio();
+
+   // Asegúrate de que los parámetros existan
+   const params = route.params as { albumId?: number; albumName?: string };
+   const albumId = params?.albumId;
+   const albumName = params?.albumName;
 
   const [album, setAlbum] = useState<Album | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -52,24 +54,36 @@ export const AlbumDetail: React.FC = () => {
     }
   }, [albumId]);
 
+  // Sincronizar estado local con el contexto de audio
+  useEffect(() => {
+    setIsPlaying(audio.isPlaying);
+  }, [audio.isPlaying]);
+
+  useEffect(() => {
+    setCurrentPlaying(audio.currentSong?.id_cancion || null);
+  }, [audio.currentSong]);
+
   const fetchAlbumData = async () => {
-    if (!albumId) return;
+  if (!albumId) return;
 
-    try {
-      setLoading(true);
-      setError('');
+  try {
+    setLoading(true);
+    setError('');
 
-      const [albumData, songsData] = await Promise.all([
-        getAlbumById(albumId),
-        getSongsByAlbumId(albumId)
-      ]);
+    const [albumData, songsData] = await Promise.all([
+      getAlbumById(albumId),
+      getSongsByAlbumId(albumId)
+    ]);
 
-      if (!albumData) {
-        throw new Error('Álbum no encontrado');
-      }
+    if (!albumData) {
+      throw new Error('Álbum no encontrado');
+    }
 
-      setAlbum(albumData);
-      setSongs(songsData);
+    // NUEVA LÍNEA: Ordenar por ID
+    const sortedSongs = [...songsData].sort((a, b) => a.id_cancion - b.id_cancion);
+
+    setAlbum(albumData);
+    setSongs(sortedSongs); // ← Usar las canciones ordenadas
     } catch (err: any) {
       console.error('Error fetching album:', err);
       setError(err?.message || 'Error al cargar el álbum');
@@ -78,12 +92,17 @@ export const AlbumDetail: React.FC = () => {
     }
   };
 
-  const handlePlaySong = (songId: number) => {
-    if (currentPlaying === songId) {
-      setIsPlaying(!isPlaying);
+  // Cuando el usuario toque una canción
+  const handlePlaySong = (song: Song) => {
+    if (!album) return;
+
+    if (currentPlaying === song.id_cancion) {
+      audio.togglePlayPause();
     } else {
-      setCurrentPlaying(songId);
-      setIsPlaying(true);
+      const startIndex = songs.findIndex(s => s.id_cancion === song.id_cancion);
+      if (startIndex >= 0) {
+        audio.playPlaylist(songs, startIndex, { id_album: album.id_album, nombre_album: album.nombre_album });
+      }
     }
   };
 
@@ -196,7 +215,7 @@ export const AlbumDetail: React.FC = () => {
                   styles.songItem,
                   currentPlaying === song.id_cancion && styles.activeSongItem
                 ]}
-                onPress={() => handlePlaySong(song.id_cancion)}
+                onPress={() => handlePlaySong(song)}
                 activeOpacity={0.7}
               >
                 <View style={styles.songNumber}>
@@ -228,7 +247,7 @@ export const AlbumDetail: React.FC = () => {
                   
                   <TouchableOpacity
                     style={styles.playButton}
-                    onPress={() => handlePlaySong(song.id_cancion)}
+                    onPress={() => handlePlaySong(song)}
                   >
                     {currentPlaying === song.id_cancion && isPlaying ? (
                       <Pause size={20} color="#3B82F6" />

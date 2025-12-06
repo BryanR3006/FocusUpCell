@@ -2,6 +2,8 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider } from "./src/contexts/AuthContext";
+import { AudioProvider } from './src/contexts/AudioContext';
+import { CompactMusicPlayer } from './src/ui/CompactMusicPlayer';
 import type { RootStackParamList } from "./src/types/navigation";
 
 import Login from "./src/pages/Login";
@@ -17,46 +19,49 @@ import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
 import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
 import ProfileScreen from "./src/pages/profilpage";
 import { MusicAlbums } from "./src/pages/MusicAlbums";
-import { AlbumDetail } from "./src/pages/AlbumDetail";
+import { MusicSongs } from "./src/pages/MusicSongs";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator 
-          initialRouteName="Login"
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#171717" },
-          }}
-        >
-          <Stack.Screen name="Login" component={Login} />
-          <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
-          <Stack.Screen name="Register" component={Register} />
-          <Stack.Screen name="Confirmation" component={Confirmation} />
-          <Stack.Screen name="Survey" component={SurveyPage} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-          <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
-          <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
-          <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
-          <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
-          <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
-          <Stack.Screen name="AlbumDetail" component={AlbumDetail} />
-          
-          {/* Nueva ruta para Perfil */}
-          <Stack.Screen 
-            name="Profile" 
-            component={ProfileScreen}
-            options={{
-              title: "Perfil",
+      <AudioProvider>
+        <NavigationContainer>
+          <Stack.Navigator 
+            initialRouteName="Login"
+            screenOptions={{
               headerShown: false,
+              contentStyle: { backgroundColor: "#171717" },
             }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+          >
+            <Stack.Screen name="Login" component={Login} />
+            <Stack.Screen name="Home" component={Home} />
+            <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
+            <Stack.Screen name="Register" component={Register} />
+            <Stack.Screen name="Confirmation" component={Confirmation} />
+            <Stack.Screen name="Survey" component={SurveyPage} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+            <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
+            <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
+            <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
+            <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
+            <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
+            <Stack.Screen name="MusicSongs" component={MusicSongs} />
+            
+            {/* Nueva ruta para Perfil */}
+            <Stack.Screen 
+              name="Profile" 
+              component={ProfileScreen}
+              options={{
+                title: "Perfil",
+                headerShown: false,
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <CompactMusicPlayer />
+      </AudioProvider>
     </AuthProvider>
   );
 }

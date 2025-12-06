@@ -59,7 +59,7 @@ export const MusicAlbums: React.FC = () => {
   };
 
   const handleAlbumClick = (album: Album) => {
-    navigation.navigate('AlbumDetail', {
+    navigation.navigate('MusicSongs', {
       albumId: album.id_album,
       albumName: album.nombre_album
     });
