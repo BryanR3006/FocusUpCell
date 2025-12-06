@@ -111,7 +111,7 @@ const FinishLaterModal = ({ visible, onConfirm, onCancel, methodName }) => {
   return (
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>¿Terminar más tarde?</Text>
+        <Text style={styles.modalTitle}>¿Terminar método?</Text>
         <Text style={styles.modalMessage}>
           Tu progreso en {methodName} se guardará y podrás retomarlo más tarde desde la sección de reportes.
         </Text>
@@ -366,13 +366,13 @@ const MindMapsStepsPage: React.FC = () => {
           <ArrowLeft size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{method.titulo}</Text>
-        {sessionData && currentStep >= 2 && (
-          <TouchableOpacity 
+        {sessionData && currentStep >= 0 && (
+          <TouchableOpacity
             style={styles.finishLaterButton}
             onPress={() => setShowFinishLaterModal(true)}
           >
             <Clock size={16} color="#fff" />
-            <Text style={styles.finishLaterText}>Terminar más tarde</Text>
+            <Text style={styles.finishLaterText}>Terminar método</Text>
           </TouchableOpacity>
         )}
       </View>

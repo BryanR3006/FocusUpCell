@@ -15,7 +15,6 @@ import {
   RefreshControl,
   Alert,
   Image,
-  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -109,29 +108,22 @@ interface UserProgress {
 
 // ===== CONSTANTES Y CONFIGURACIÓN =====
 const COLORS = {
-  // Colores base
   bgDark: '#0B1020',
   card: '#0F1724',
   surface: '#1A2536',
-  
-  // Colores primarios
-  primary: '#8B5CF6',      // Violeta
+  primary: '#8B5CF6',
   primaryLight: '#A78BFA',
-  secondary: '#06B6D4',    // Cyan
+  secondary: '#06B6D4',
   secondaryLight: '#22D3EE',
-  success: '#10B981',      // Verde
+  success: '#10B981',
   successLight: '#34D399',
-  warning: '#F59E0B',      // Ámbar
+  warning: '#F59E0B',
   warningLight: '#FBBF24',
-  error: '#EF4444',        // Rojo
+  error: '#EF4444',
   errorLight: '#F87171',
-  
-  // Colores de texto
   textPrimary: '#F1F5F9',
   textSecondary: '#94A3B8',
   textMuted: '#64748B',
-  
-  // Colores adicionales
   info: '#3B82F6',
   purple: '#8B5CF6',
   pink: '#EC4899',
@@ -149,7 +141,7 @@ const METHOD_COLORS = [
   COLORS.purple,
 ];
 
-// ===== FUNCIONES HELPER MEJORADAS =====
+// ===== FUNCIONES HELPER =====
 const getMethodIcon = (iconName?: string) => {
   const icons: Record<string, any> = {
     'clock': Clock,
@@ -236,7 +228,22 @@ const formatStudyTime = (seconds: number) => {
   return `${minutes}m`;
 };
 
-// ===== COMPONENTES UI MEJORADOS =====
+// ===== FUNCIÓN PARA EXTRAER DATOS DE RESPUESTAS DE API =====
+const extractDataFromResponse = (response: any) => {
+  // Manejar diferentes formatos de respuesta
+  if (response.data && Array.isArray(response.data)) {
+    return response.data;
+  } else if (Array.isArray(response)) {
+    return response;
+  } else if (response.data) {
+    return [response.data];
+  } else if (response.result) {
+    return Array.isArray(response.result) ? response.result : [response.result];
+  }
+  return [];
+};
+
+// ===== COMPONENTES UI =====
 const StatCard = ({ Icon, value, label, color, subtitle }: any) => (
   <View style={styles.statCard}>
     <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
@@ -372,7 +379,7 @@ const ExpandableSection = ({
   </View>
 );
 
-// ===== COMPONENTE PRINCIPAL MEJORADO =====
+// ===== COMPONENTE PRINCIPAL =====
 const Home: React.FC = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
@@ -409,211 +416,262 @@ const Home: React.FC = () => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // ===== INTEGRACIÓN CON API MEJORADA =====
+  // ===== FUNCIONES DE API =====
+  const fetchStudyMethods = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.STUDY_METHODS);
+      const methods = extractDataFromResponse(response);
+      
+      // Obtener también los métodos activos del usuario
+      const activeMethodsResponse = await apiClient.get(API_ENDPOINTS.USER_METHODS_REPORTS);
+      const activeMethods = extractDataFromResponse(activeMethodsResponse);
+      
+      return methods.map((method: any, index: number) => {
+        const activeMethod = activeMethods.find((am: any) => am.metodo_id === method.id);
+        const progreso = activeMethod?.progreso || 0;
+        
+        return {
+          id: method.id,
+          titulo: method.nombre || method.titulo || 'Método sin nombre',
+          descripcion: method.descripcion || method.descripcion_corta || 'Sin descripción',
+          icono: method.icono || 'book-open',
+          color: method.color || getMethodColor(index, Number(method.id)),
+          progreso: progreso,
+          estado: progreso === 100 ? 'completado' : 
+                 progreso > 0 ? 'activo' : 'pausado',
+          duracion_recomendada: method.duracion_recomendada,
+          dificultad: method.dificultad,
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching study methods:', error);
+      return [];
+    }
+  };
+
+  const fetchMusicAlbums = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.MUSIC_ALBUMS);
+      const albums = extractDataFromResponse(response);
+      
+      return albums.map((album: any) => ({
+        id: album.id,
+        titulo: album.nombre || album.titulo || 'Álbum sin nombre',
+        artista: album.artista || 'Artista desconocido',
+        genero: album.genero || 'Sin género',
+        portada_url: album.portada_url || album.cover_url,
+        duracion_total: album.duracion_total,
+      }));
+    } catch (error) {
+      console.error('Error fetching music albums:', error);
+      return [];
+    }
+  };
+
+  const fetchRecentSessions = async () => {
+    try {
+      // Primero intentar obtener sesiones del endpoint de reportes
+      const response = await apiClient.get(API_ENDPOINTS.USER_SESSIONS_REPORTS);
+      const sessions = extractDataFromResponse(response);
+      
+      // Si no hay sesiones en reportes, intentar obtener del endpoint de sesiones
+      if (sessions.length === 0) {
+        try {
+          const sessionsResponse = await apiClient.get(API_ENDPOINTS.SESSIONS);
+          const sessionsData = extractDataFromResponse(sessionsResponse);
+          return sessionsData.map((session: any) => ({
+            id: session.id,
+            titulo: session.titulo || 'Sesión sin título',
+            metodo: session.metodo_nombre || session.metodo || 'Sin método',
+            duracion_minutos: session.duracion_minutos || session.duracion || 0,
+            fecha_inicio: session.fecha_inicio || session.created_at,
+            estado: session.estado || 'completada',
+            concentracion: session.concentracion || session.concentration || 75,
+            productividad: session.productividad,
+            notas: session.notas,
+          }));
+        } catch (sessionsError) {
+          console.error('Error fetching sessions:', sessionsError);
+          return [];
+        }
+      }
+      
+      return sessions.map((session: any) => ({
+        id: session.id,
+        titulo: session.titulo || 'Sesión sin título',
+        metodo: session.metodo_nombre || session.metodo || 'Sin método',
+        duracion_minutos: session.duracion_minutos || session.duracion || 0,
+        fecha_inicio: session.fecha_inicio || session.created_at,
+        estado: session.estado || 'completada',
+        concentracion: session.concentracion || 75,
+        productividad: session.productividad,
+        notas: session.notas,
+      }));
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      return [];
+    }
+  };
+
+  const fetchUpcomingEvents = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.EVENTS);
+      const events = extractDataFromResponse(response);
+      
+      // Filtrar eventos pendientes
+      const pendingEvents = events.filter((event: any) => 
+        event.estado === 'pendiente' || event.status === 'pending'
+      );
+      
+      return pendingEvents.map((event: any) => ({
+        id: event.id,
+        titulo: event.titulo || event.title || 'Evento sin título',
+        descripcion: event.descripcion || event.description || 'Sin descripción',
+        fecha_inicio: event.fecha_inicio || event.start_date,
+        fecha_fin: event.fecha_fin || event.end_date,
+        tipo: event.tipo || event.type || 'sesion_estudio',
+        estado: event.estado || event.status || 'pendiente',
+        metodo_id: event.metodo_id || event.method_id,
+        recordatorio: event.recordatorio || event.reminder,
+      }));
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      return [];
+    }
+  };
+
+  const fetchUserProgress = async () => {
+    try {
+      // Obtener estadísticas del usuario
+      const [methodsResponse, sessionsResponse, musicResponse, eventsResponse] = await Promise.all([
+        apiClient.get(API_ENDPOINTS.USER_METHODS_REPORTS),
+        apiClient.get(API_ENDPOINTS.USER_SESSIONS_REPORTS),
+        apiClient.get(API_ENDPOINTS.MUSIC_ALBUMS),
+        apiClient.get(API_ENDPOINTS.EVENTS),
+      ]);
+
+      const userMethods = extractDataFromResponse(methodsResponse);
+      const userSessions = extractDataFromResponse(sessionsResponse);
+      const userMusic = extractDataFromResponse(musicResponse);
+      const userEvents = extractDataFromResponse(eventsResponse);
+
+      // Calcular estadísticas
+      const completedMethods = userMethods.filter((m: any) => m.progreso === 100).length;
+      const activeMethods = userMethods.filter((m: any) => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
+      const pendingEvents = userEvents.filter((e: any) => e.estado === 'pendiente' || e.status === 'pending').length;
+      
+      // Calcular tiempo total de estudio (en segundos)
+      const totalStudyTime = userSessions
+        .filter((s: any) => s.estado === 'completada' || s.status === 'completed')
+        .reduce((total: number, session: any) => total + (session.duracion_minutos || session.duration_minutes || 0) * 60, 0);
+
+      // Calcular concentración promedio
+      const sessionsWithConcentration = userSessions.filter((s: any) => s.concentracion);
+      const averageConcentration = sessionsWithConcentration.length > 0
+        ? sessionsWithConcentration.reduce((sum: number, session: any) => sum + (session.concentracion || 0), 0) / sessionsWithConcentration.length
+        : 75;
+
+      // Calcular racha (días seguidos estudiando) - Esto necesitaría un cálculo más complejo
+      // Por ahora, lo calculamos basado en sesiones en los últimos 7 días
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const recentSessions = userSessions.filter((s: any) => {
+        const sessionDate = new Date(s.fecha_inicio || s.created_at);
+        return sessionDate > weekAgo;
+      });
+      const uniqueDays = new Set(
+        recentSessions.map((s: any) => {
+          const date = new Date(s.fecha_inicio || s.created_at);
+          return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        })
+      );
+      const streakDays = uniqueDays.size;
+
+      return {
+        totalMethods: userMethods.length,
+        completedMethods,
+        totalSessions: userSessions.length,
+        totalMusic: userMusic.length,
+        activeMethods,
+        upcomingEvents: pendingEvents,
+        totalStudyTime,
+        averageConcentration: Math.round(averageConcentration),
+        streakDays,
+      };
+    } catch (error) {
+      console.error('Error fetching user progress:', error);
+      return null;
+    }
+  };
+
+  // ===== CARGA DE DATOS =====
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Cargar datos en paralelo para mejor performance
+      console.log('Cargando datos del usuario...');
+      
+      // Cargar todos los datos en paralelo
       const [
-        methodsResponse,
-        progressResponse,
-        musicResponse,
-        sessionsResponse,
-        eventsResponse,
-        userStatsResponse
-      ] = await Promise.allSettled([
-        apiClient.get(API_ENDPOINTS.STUDY_METHODS),
-        apiClient.get(API_ENDPOINTS.METHOD_PROGRESS),
-        apiClient.get(`${API_ENDPOINTS.MUSIC_LIBRARY}?limit=3`),
-        apiClient.get(`${API_ENDPOINTS.USER_SESSIONS}?limit=5&sort=-fecha_inicio`),
-        apiClient.get(`${API_ENDPOINTS.STUDY_EVENTS}?estado=pendiente&limit=3`),
-        apiClient.get(API_ENDPOINTS.USER_STATS)
+        methods,
+        albums,
+        sessions,
+        events,
+        progress
+      ] = await Promise.all([
+        fetchStudyMethods(),
+        fetchMusicAlbums(),
+        fetchRecentSessions(),
+        fetchUpcomingEvents(),
+        fetchUserProgress(),
       ]);
 
-      // Procesar métodos de estudio
-      if (methodsResponse.status === 'fulfilled') {
-        const methodsData = methodsResponse.value.data?.data || [];
-        const progressData = progressResponse.status === 'fulfilled' 
-          ? progressResponse.value.data?.data || []
-          : [];
+      console.log('Datos cargados:', {
+        methods: methods.length,
+        albums: albums.length,
+        sessions: sessions.length,
+        events: events.length,
+        progress: progress ? 'OK' : 'Error'
+      });
 
-        const processedMethods = methodsData.map((method: any, index: number) => {
-          const methodProgress = progressData.find((p: any) => p.metodo_id === method.id);
-          return {
-            id: method.id,
-            titulo: method.nombre || method.titulo,
-            descripcion: method.descripcion,
-            icono: method.icono || 'book-open',
-            color: method.color || getMethodColor(index, method.id),
-            progreso: methodProgress?.progreso || 0,
-            estado: methodProgress?.progreso === 100 ? 'completado' : 
-                   methodProgress?.progreso > 0 ? 'activo' : 'pausado',
-          };
+      // Actualizar estados con los datos obtenidos
+      setStudyMethods(methods.slice(0, 3)); // Solo mostrar 3 métodos
+      setMusicAlbums(albums.slice(0, 3));   // Solo mostrar 3 álbumes
+      setRecentSessions(sessions.slice(0, 5)); // Solo mostrar 5 sesiones
+      setUpcomingEvents(events.slice(0, 3)); // Solo mostrar 3 eventos
+
+      // Si se obtuvo progreso del usuario, usarlo
+      if (progress) {
+        setUserProgress(progress);
+      } else {
+        // Calcular progreso basado en datos locales si no se pudo obtener de la API
+        const completedMethods = methods.filter(m => m.progreso === 100).length;
+        const activeMethods = methods.filter(m => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
+        
+        setUserProgress({
+          totalMethods: methods.length,
+          completedMethods,
+          totalSessions: sessions.length,
+          totalMusic: albums.length,
+          activeMethods,
+          upcomingEvents: events.length,
+          totalStudyTime: 0, // No se puede calcular sin datos
+          averageConcentration: 75,
+          streakDays: 0,
         });
-
-        setStudyMethods(processedMethods.slice(0, 3));
       }
-
-      // Procesar música
-      if (musicResponse.status === 'fulfilled') {
-        const musicData = musicResponse.value.data?.data || [];
-        setMusicAlbums(musicData.slice(0, 3));
-      }
-
-      // Procesar sesiones
-      if (sessionsResponse.status === 'fulfilled') {
-        const sessionsData = sessionsResponse.value.data?.data || [];
-        setRecentSessions(sessionsData);
-      }
-
-      // Procesar eventos
-      if (eventsResponse.status === 'fulfilled') {
-        const eventsData = eventsResponse.value.data?.data || [];
-        setUpcomingEvents(eventsData);
-      }
-
-      // Procesar estadísticas del usuario
-      if (userStatsResponse.status === 'fulfilled') {
-        const statsData = userStatsResponse.value.data?.data || {};
-        setUserProgress(prev => ({
-          ...prev,
-          totalStudyTime: statsData.total_study_time || 0,
-          averageConcentration: statsData.avg_concentration || 75,
-          streakDays: statsData.streak_days || 0,
-          totalMethods: statsData.total_methods || 0,
-          completedMethods: statsData.completed_methods || 0,
-          totalSessions: statsData.total_sessions || 0,
-          activeMethods: statsData.active_methods || 0,
-        }));
-      }
-
-      // Calcular estadísticas adicionales
-      const completedMethods = studyMethods.filter(m => m.progreso === 100).length;
-      const activeMethods = studyMethods.filter(m => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
-
-      setUserProgress(prev => ({
-        ...prev,
-        completedMethods,
-        activeMethods,
-        totalMusic: musicAlbums.length,
-        upcomingEvents: upcomingEvents.length,
-      }));
 
     } catch (err: any) {
-      console.error('Error cargando datos:', err);
+      console.error('Error general cargando datos:', err);
       
-      // Fallback a datos mock si la API falla (solo en desarrollo)
+      // Mostrar error pero no usar datos mock en producción
+      setError('Error al cargar los datos. Verifica tu conexión e intenta de nuevo.');
+      
+      // En desarrollo, puedes usar datos mock si quieres
       if (__DEV__) {
         console.log('Usando datos de ejemplo para desarrollo');
-        
-        // Datos mock para desarrollo
-        const mockMethods: StudyMethod[] = [
-          {
-            id: 1,
-            titulo: 'Método Pomodoro',
-            descripcion: 'Técnica de gestión del tiempo en intervalos',
-            icono: 'timer',
-            color: COLORS.primary,
-            progreso: 75,
-            estado: 'activo',
-          },
-          {
-            id: 2,
-            titulo: 'Mapas Mentales',
-            descripcion: 'Organización visual de ideas y conceptos',
-            icono: 'brain',
-            color: COLORS.success,
-            progreso: 45,
-            estado: 'activo',
-          },
-          {
-            id: 3,
-            titulo: 'Técnica Feynman',
-            descripcion: 'Aprender enseñando a otros',
-            icono: 'book-open',
-            color: COLORS.secondary,
-            progreso: 20,
-            estado: 'pausado',
-          },
-        ];
-
-        const mockAlbums: MusicAlbum[] = [
-          {
-            id: 1,
-            titulo: 'Lo-Fi Study Beats',
-            artista: 'Study Vibes',
-            genero: 'Lo-Fi Hip Hop',
-            portada_url: 'https://picsum.photos/200/200?random=1',
-          },
-          {
-            id: 2,
-            titulo: 'Classical Focus',
-            artista: 'Mozart & Friends',
-            genero: 'Clásica',
-            portada_url: 'https://picsum.photos/200/200?random=2',
-          },
-          {
-            id: 3,
-            titulo: 'Nature Sounds',
-            artista: 'Forest Studio',
-            genero: 'Ambient',
-            portada_url: 'https://picsum.photos/200/200?random=3',
-          },
-        ];
-
-        const mockSessions: StudySession[] = [
-          {
-            id: 1,
-            titulo: 'Sesión de Matemáticas',
-            metodo: 'Pomodoro',
-            duracion_minutos: 45,
-            fecha_inicio: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            estado: 'completada',
-            concentracion: 85,
-          },
-          {
-            id: 2,
-            titulo: 'Repaso de Historia',
-            metodo: 'Feynman',
-            duracion_minutos: 30,
-            fecha_inicio: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            estado: 'completada',
-            concentracion: 78,
-          },
-        ];
-
-        const mockEvents: StudyEvent[] = [
-          {
-            id: 1,
-            titulo: 'Sesión de Repaso General',
-            descripcion: 'Repaso de todos los temas vistos esta semana',
-            fecha_inicio: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-            fecha_fin: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-            tipo: 'repaso',
-            estado: 'pendiente',
-          },
-        ];
-
-        setStudyMethods(mockMethods);
-        setMusicAlbums(mockAlbums);
-        setRecentSessions(mockSessions);
-        setUpcomingEvents(mockEvents);
-
-        setUserProgress({
-          totalMethods: mockMethods.length,
-          completedMethods: mockMethods.filter(m => m.progreso === 100).length,
-          totalSessions: mockSessions.length,
-          totalMusic: mockAlbums.length,
-          activeMethods: mockMethods.filter(m => m.estado === 'activo').length,
-          upcomingEvents: mockEvents.length,
-          totalStudyTime: 4520,
-          averageConcentration: 82,
-          streakDays: 7,
-        });
-      } else {
-        setError('Error al conectar con el servidor. Verifica tu conexión.');
+        loadMockData();
       }
     } finally {
       setLoading(false);
@@ -621,12 +679,118 @@ const Home: React.FC = () => {
     }
   }, []);
 
-  // Efecto para cargar datos
+  // ===== DATOS MOCK (solo para desarrollo) =====
+  const loadMockData = () => {
+    const mockMethods: StudyMethod[] = [
+      {
+        id: 1,
+        titulo: 'Método Pomodoro',
+        descripcion: 'Técnica de gestión del tiempo en intervalos',
+        icono: 'timer',
+        color: COLORS.primary,
+        progreso: 75,
+        estado: 'activo',
+      },
+      {
+        id: 2,
+        titulo: 'Mapas Mentales',
+        descripcion: 'Organización visual de ideas y conceptos',
+        icono: 'brain',
+        color: COLORS.success,
+        progreso: 45,
+        estado: 'activo',
+      },
+      {
+        id: 3,
+        titulo: 'Técnica Feynman',
+        descripcion: 'Aprender enseñando a otros',
+        icono: 'book-open',
+        color: COLORS.secondary,
+        progreso: 20,
+        estado: 'pausado',
+      },
+    ];
+
+    const mockAlbums: MusicAlbum[] = [
+      {
+        id: 1,
+        titulo: 'Lo-Fi Study Beats',
+        artista: 'Study Vibes',
+        genero: 'Lo-Fi Hip Hop',
+        portada_url: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&h=400&fit=crop',
+      },
+      {
+        id: 2,
+        titulo: 'Classical Focus',
+        artista: 'Mozart & Friends',
+        genero: 'Clásica',
+        portada_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
+      },
+      {
+        id: 3,
+        titulo: 'Nature Sounds',
+        artista: 'Forest Studio',
+        genero: 'Ambient',
+        portada_url: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
+      },
+    ];
+
+    const mockSessions: StudySession[] = [
+      {
+        id: 1,
+        titulo: 'Sesión de Matemáticas',
+        metodo: 'Pomodoro',
+        duracion_minutos: 45,
+        fecha_inicio: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        estado: 'completada',
+        concentracion: 85,
+      },
+      {
+        id: 2,
+        titulo: 'Repaso de Historia',
+        metodo: 'Feynman',
+        duracion_minutos: 30,
+        fecha_inicio: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        estado: 'completada',
+        concentracion: 78,
+      },
+    ];
+
+    const mockEvents: StudyEvent[] = [
+      {
+        id: 1,
+        titulo: 'Sesión de Repaso General',
+        descripcion: 'Repaso de todos los temas vistos esta semana',
+        fecha_inicio: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        fecha_fin: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        tipo: 'repaso',
+        estado: 'pendiente',
+      },
+    ];
+
+    setStudyMethods(mockMethods);
+    setMusicAlbums(mockAlbums);
+    setRecentSessions(mockSessions);
+    setUpcomingEvents(mockEvents);
+
+    setUserProgress({
+      totalMethods: mockMethods.length,
+      completedMethods: 1,
+      totalSessions: mockSessions.length,
+      totalMusic: mockAlbums.length,
+      activeMethods: 2,
+      upcomingEvents: mockEvents.length,
+      totalStudyTime: 4520,
+      averageConcentration: 82,
+      streakDays: 7,
+    });
+  };
+
+  // ===== EFECTOS =====
   useEffect(() => {
     loadUserData();
   }, []);
 
-  // Recargar cuando la pantalla recibe foco
   useFocusEffect(
     useCallback(() => {
       if (!loading) {
@@ -640,12 +804,31 @@ const Home: React.FC = () => {
     loadUserData();
   }, [loadUserData]);
 
+  // ===== MANEJADORES DE NAVEGACIÓN =====
   const navigateTo = (screen: string, params?: any) => {
     try {
-      navigation.navigate(screen as never, params as never);
+      const screenMap: Record<string, string> = {
+        'QuickSession': 'Session',
+        'Sessions': 'SessionHistory',
+        'Events': 'Events',
+        'Stats': 'Statistics',
+        'MusicPlayer': 'MusicPlayer',
+        'Profile': 'Profile',
+        'StudyMethods': 'StudyMethods',
+        'Tutorial': 'Tutorial',
+        'MusicAlbums': 'MusicAlbums',
+        'SessionHistory': 'SessionHistory',
+        'Statistics': 'Statistics',
+      };
+      
+      const targetScreen = screenMap[screen] || screen;
+      
+      if (navigation && typeof navigation.navigate === 'function') {
+        navigation.navigate(targetScreen as never, params as never);
+      }
     } catch (err) {
-      console.warn('Navigation error:', err);
-      Alert.alert('Error', 'No se pudo navegar a esta pantalla');
+      console.warn(`Error navegando a ${screen}:`, err);
+      Alert.alert('Error', 'No se puede navegar en este momento');
     }
   };
 
@@ -653,7 +836,7 @@ const Home: React.FC = () => {
     if (method?.titulo?.toLowerCase().includes('pomodoro')) {
       navigateTo('PomodoroIntro', { methodId: method.id });
     } else {
-      navigateTo('QuickSession', { 
+      navigateTo('Session', { 
         methodId: method?.id,
         methodName: method?.titulo 
       });
@@ -661,21 +844,7 @@ const Home: React.FC = () => {
   };
 
   const handlePlayMusic = (album: MusicAlbum) => {
-    // Implementar lógica de reproducción
-    Alert.alert(
-      'Reproducir Música',
-      `¿Reproducir ${album.titulo || album.nombre}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Reproducir',
-          onPress: () => {
-            // Navegar a reproductor o iniciar reproducción
-            navigateTo('MusicPlayer', { album });
-          },
-        },
-      ]
-    );
+    navigateTo('MusicPlayer', { album });
   };
 
   const handleStartEvent = (event: StudyEvent) => {
@@ -687,7 +856,6 @@ const Home: React.FC = () => {
         {
           text: 'Comenzar',
           onPress: () => {
-            // Lógica para iniciar evento
             navigateTo('Session', { eventId: event.id });
           },
         },
@@ -695,7 +863,7 @@ const Home: React.FC = () => {
     );
   };
 
-  // Estadísticas mejoradas
+  // ===== DATOS DE ESTADÍSTICAS =====
   const statsData = [
     {
       Icon: Clock,
@@ -727,6 +895,7 @@ const Home: React.FC = () => {
     },
   ];
 
+  // ===== RENDERIZADO =====
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -745,7 +914,6 @@ const Home: React.FC = () => {
       
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
 
-      {/* HEADER MEJORADO */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.headerButton}
@@ -791,7 +959,6 @@ const Home: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* SECCIÓN DE BIENVENIDA */}
         <View style={styles.welcomeSection}>
           <View>
             <Text style={styles.welcomeTitle}>
@@ -803,24 +970,21 @@ const Home: React.FC = () => {
           </View>
           <TouchableOpacity 
             style={styles.quickStartButton}
-            onPress={() => navigateTo('QuickSession')}
+            onPress={() => navigateTo('Session')}
           >
             <Zap size={18} color="#fff" />
             <Text style={styles.quickStartText}>Inicio Rápido</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ESTADÍSTICAS */}
         <View style={styles.statsGrid}>
           {statsData.map((stat, index) => (
-            <StatCard key={index} {...stat} />
+            <StatCard key={`stat-${index}`} {...stat} />
           ))}
         </View>
 
-        {/* SECCIONES EXPANDIBLES */}
         <View style={styles.sectionsContainer}>
           
-          {/* MÉTODOS DE ESTUDIO */}
           <ExpandableSection
             title="Métodos Activos"
             description={userProgress.activeMethods > 0 
@@ -849,7 +1013,7 @@ const Home: React.FC = () => {
               <>
                 <FlatList
                   data={studyMethods}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                   renderItem={({ item, index }) => {
                     const IconComponent = getMethodIcon(item.icono);
                     const color = item.color || getMethodColor(index, Number(item.id));
@@ -908,7 +1072,6 @@ const Home: React.FC = () => {
             )}
           </ExpandableSection>
 
-          {/* MÚSICA PARA CONCENTRACIÓN */}
           <ExpandableSection
             title="Música para Estudiar"
             description={`${musicAlbums.length} álbumes disponibles`}
@@ -931,7 +1094,7 @@ const Home: React.FC = () => {
               <>
                 <FlatList
                   data={musicAlbums}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       style={styles.musicItem}
@@ -977,7 +1140,6 @@ const Home: React.FC = () => {
             )}
           </ExpandableSection>
 
-          {/* SESIONES RECIENTES */}
           <ExpandableSection
             title="Sesiones Recientes"
             description={`${userProgress.totalSessions} sesiones completadas`}
@@ -993,14 +1155,14 @@ const Home: React.FC = () => {
                 title="Aún sin sesiones"
                 subtitle="Comienza tu primera sesión para ver tu progreso"
                 actionLabel="Comenzar Sesión"
-                onPress={() => navigateTo('QuickSession')}
+                onPress={() => navigateTo('Session')}
                 icon={Clock}
               />
             ) : (
               <>
                 <FlatList
                   data={recentSessions}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                   renderItem={({ item }) => (
                     <View style={styles.sessionItem}>
                       <View style={styles.sessionHeader}>
@@ -1056,7 +1218,7 @@ const Home: React.FC = () => {
                 />
                 <TouchableOpacity 
                   style={styles.viewAllButton}
-                  onPress={() => navigateTo('Sessions')}
+                  onPress={() => navigateTo('SessionHistory')}
                 >
                   <Text style={styles.viewAllText}>Ver historial completo</Text>
                   <ChevronDown size={16} color={COLORS.warning} />
@@ -1065,7 +1227,6 @@ const Home: React.FC = () => {
             )}
           </ExpandableSection>
 
-          {/* EVENTOS PROGRAMADOS */}
           <ExpandableSection
             title="Eventos Próximos"
             description="Organiza tus sesiones de estudio"
@@ -1152,7 +1313,6 @@ const Home: React.FC = () => {
           </ExpandableSection>
         </View>
 
-        {/* CONSEJO DEL DÍA */}
         <View style={styles.tipContainer}>
           <View style={[styles.tipIcon, { backgroundColor: `${COLORS.info}15` }]}>
             <Brain size={22} color={COLORS.info} />
@@ -1169,7 +1329,6 @@ const Home: React.FC = () => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* NAVEGACIÓN INFERIOR MEJORADA */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navItem, styles.navItemActive]}>
           <View style={[styles.navIcon, styles.navIconActive]}>
@@ -1190,7 +1349,7 @@ const Home: React.FC = () => {
         
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => navigateTo('QuickSession')}
+          onPress={() => navigateTo('Session')}
         >
           <View style={styles.navIcon}>
             <Zap size={20} color={COLORS.textSecondary} />
@@ -1210,7 +1369,7 @@ const Home: React.FC = () => {
         
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => navigateTo('Stats')}
+          onPress={() => navigateTo('Statistics')}
         >
           <View style={styles.navIcon}>
             <BarChart3 size={20} color={COLORS.textSecondary} />
@@ -1224,7 +1383,7 @@ const Home: React.FC = () => {
 
 export default Home;
 
-// ===== ESTILOS MEJORADOS =====
+// ===== ESTILOS =====
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

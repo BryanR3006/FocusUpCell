@@ -360,13 +360,13 @@ const SpacedRepetitionStepsView: React.FC = () => {
           <ArrowLeft size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{method.titulo}</Text>
-        {sessionData && currentStep >= 2 && (
-          <TouchableOpacity 
+        {sessionData && currentStep >= 0 && (
+          <TouchableOpacity
             style={styles.finishLaterButton}
             onPress={() => setShowFinishLaterModal(true)}
           >
             <Clock size={16} color="#fff" />
-            <Text style={styles.finishLaterText}>Terminar más tarde</Text>
+            <Text style={styles.finishLaterText}>Terminar método</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -491,6 +491,7 @@ const SpacedRepetitionStepsView: React.FC = () => {
         methodName={method.titulo}
         onConfirm={handleFinishLater}
         onCancel={() => setShowFinishLaterModal(false)}
+        title="¿Terminar método?"
       />
     </SafeAreaView>
   );
