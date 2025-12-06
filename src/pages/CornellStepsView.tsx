@@ -238,7 +238,7 @@ export const CornellStepsView: React.FC = () => {
     Alert.alert(
       '¡Completado!',
       `Sesión de ${method?.titulo || 'Método Cornell'} guardada`,
-      [{ text: 'OK', onPress: () => navigation.navigate('Dashboard') }]
+      [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
     );
   };
 
@@ -314,13 +314,13 @@ export const CornellStepsView: React.FC = () => {
             {method.titulo}
           </Text>
           
-          {sessionData && currentStep >= 1 && (
+          {sessionData && currentStep >= 0 && (
             <TouchableOpacity
               style={styles.finishLaterButton}
               onPress={() => setShowFinishLaterModal(true)}
             >
               <Clock size={16} color="#FFFFFF" />
-              <Text style={styles.finishLaterText}>Terminar más tarde</Text>
+              <Text style={styles.finishLaterText}>Terminar método</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -448,7 +448,7 @@ export const CornellStepsView: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>¿Terminar más tarde?</Text>
+            <Text style={styles.modalTitle}>¿Terminar método?</Text>
             <Text style={styles.modalText}>
               Tu progreso actual se guardará para que puedas retomar esta sesión de {method?.titulo || 'Método Cornell'} más tarde.
             </Text>
@@ -468,7 +468,7 @@ export const CornellStepsView: React.FC = () => {
                     await updateSessionProgress(progressPercentage, getCornellStatusByProgress(progressPercentage));
                   }
                   setShowFinishLaterModal(false);
-                  navigation.navigate('Reports');
+                  navigation.navigate('Home');
                 }}
               >
                 <Text style={styles.modalButtonTextPrimary}>Confirmar</Text>

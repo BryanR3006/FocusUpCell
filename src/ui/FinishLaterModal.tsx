@@ -5,12 +5,14 @@ interface FinishLaterModalProps {
   isOpen: boolean;
   methodName: string;
   onConfirm: () => void;
+  title?: string;
 }
 
 const FinishLaterModal: React.FC<FinishLaterModalProps> = ({
   isOpen,
   methodName,
   onConfirm,
+  title = "¿Terminar más tarde?",
 }) => {
   return (
     <Modal
@@ -20,7 +22,7 @@ const FinishLaterModal: React.FC<FinishLaterModalProps> = ({
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>¿Terminar más tarde?</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>
             Tu progreso actual se guardará para que puedas retomar esta sesión de {methodName} más tarde.
           </Text>
