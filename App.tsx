@@ -28,6 +28,7 @@ import CornellIntroView from "./src/pages/CornellIntroView";
 import CornellStepsView from "./src/pages/CornellStepsView";
 import MindMapsIntroView from "./src/pages/MindMapsInfoPage";
 import MindMapsStepsView from "./src/pages/MindMapsStepsPage";
+import EventsPage from "./src/pages/EventsPage";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,7 +60,8 @@ export default function App() {
           <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
 
           {/* Método Active Recall (Práctica Activa) */}
-          <Stack.Screen  name="ActiveRecallIntro"component={ActiveRecallIntroView}/></>
+          <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
+          <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
 
           {/* Método Spaced Repetition (Repetición Espaciada) */}
           <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView}/>
@@ -76,7 +78,10 @@ export default function App() {
           {/* Método Mind Maps (Mapas Mentales) */}
           <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView}/>
           <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
-        
+
+          {/* Página de Eventos */}
+          <Stack.Screen name="Events" component={EventsPage} />
+
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
