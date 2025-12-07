@@ -251,7 +251,7 @@ export const ProfileScreen: React.FC = () => {
           apiClient.getDistractions(),
         ]);
 
-        const profileData = profileRes.data;
+        const profileData = profileRes;
 
         // Process time
         let hours = "", minutes = "", period = "";
@@ -293,8 +293,18 @@ export const ProfileScreen: React.FC = () => {
           distracciones: profileData.distracciones || [],
         });
 
-        setInterests(interestsRes.data || []);
-        setDistractions(distractionsRes.data || []);
+        // Transform string arrays to objects with id and nombre
+        const interestsData = (interestsRes || []).map((name: string, index: number) => ({
+          id: index + 1,
+          nombre: name
+        }));
+        const distractionsData = (distractionsRes || []).map((name: string, index: number) => ({
+          id: index + 1,
+          nombre: name
+        }));
+
+        setInterests(interestsData);
+        setDistractions(distractionsData);
       } catch (error) {
         console.error("Error loading data:", error);
         Alert.alert("Error", "No se pudo cargar la información");
