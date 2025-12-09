@@ -2,11 +2,14 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider } from "./src/contexts/AuthContext";
+import { AudioProvider } from "./src/contexts/AudioContext";
+import { CompactMusicPlayer } from "./src/ui/CompactMusicPlayer";
 import type { RootStackParamList } from "./src/types/navigation";
 
 import Login from "./src/pages/Login";
 import Home from "./src/pages/Home";
-import Register from "./src/pages/Register";
+import { Register } from "./src/pages/Register";
+import { RegisterStep2 } from "./src/pages/RegisterStep2";
 import Confirmation from "./src/pages/Confirmation";
 import SurveyPage from "./src/pages/Survey";
 import StudyMethodsLibraryPage from "./src/pages/StudyMethodsLibraryPage";
@@ -17,7 +20,11 @@ import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
 import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
 import ProfileScreen from "./src/pages/profilpage";
 
-// Importar todas las vistas de métodos de estudio
+// Desde Features/Erickson
+import { MusicAlbums } from "./src/pages/MusicAlbums";
+import { MusicSongs } from "./src/pages/MusicSongs";
+
+// Desde develop: vistas de métodos de estudio y Events
 import ActiveRecallIntroView from "./src/pages/ActiveRecallIntroView";
 import ActiveRecallStepsView from "./src/pages/ActiveRecallStepsView";
 import SpacedRepetitionIntroView from "./src/pages/SpacedRepetitionIntroView";
@@ -35,55 +42,62 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator 
-          initialRouteName="Login"
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#171717" },
-          }}
-        >
-          {/* Rutas principales */}
-          <Stack.Screen name="Login" component={Login} />
-          <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
-          <Stack.Screen name="Register" component={Register} />
-          <Stack.Screen name="Confirmation" component={Confirmation} />
-          <Stack.Screen name="Survey" component={SurveyPage} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-          <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
-          <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
+      <AudioProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Login"
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "#171717" },
+            }}
+          >
+            {/* Rutas principales */}
+            <Stack.Screen name="Login" component={Login} />
+            <Stack.Screen name="Home" component={Home} />
+            <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
+            <Stack.Screen name="Register" component={Register} />
+            <Stack.Screen name="RegisterStep2" component={RegisterStep2} />
+            <Stack.Screen name="Confirmation" component={Confirmation} />
+            <Stack.Screen name="Survey" component={SurveyPage} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+            <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
+            <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
 
-          {/* Método Pomodoro */}
-          <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
-          <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
+            {/* Método Pomodoro */}
+            <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
+            <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
 
-          {/* Método Active Recall (Práctica Activa) */}
-          <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
-          <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
+            {/* Música */}
+            <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
+            <Stack.Screen name="MusicSongs" component={MusicSongs} />
 
-          {/* Método Spaced Repetition (Repetición Espaciada) */}
-          <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView}/>
-          <Stack.Screen  name="SpacedRepetitionSteps"component={SpacedRepetitionStepsView}/>
+            {/* Método Active Recall (Práctica Activa) */}
+            <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
+            <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
 
-          {/* Método Feynman */}
-          <Stack.Screen  name="FeynmanIntro" component={FeynmanIntroView} />
-          <Stack.Screen name="FeynmanSteps"  component={FeynmanStepsView} />
+            {/* Método Spaced Repetition (Repetición Espaciada) */}
+            <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView} />
+            <Stack.Screen name="SpacedRepetitionSteps" component={SpacedRepetitionStepsView} />
 
-          {/* Método Cornell */}
-          <Stack.Screen name="CornellIntro" component={CornellIntroView}  />
-          <Stack.Screen name="CornellSteps" component={CornellStepsView}/>
+            {/* Método Feynman */}
+            <Stack.Screen name="FeynmanIntro" component={FeynmanIntroView} />
+            <Stack.Screen name="FeynmanSteps" component={FeynmanStepsView} />
 
-          {/* Método Mind Maps (Mapas Mentales) */}
-          <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView}/>
-          <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
+            {/* Método Cornell */}
+            <Stack.Screen name="CornellIntro" component={CornellIntroView} />
+            <Stack.Screen name="CornellSteps" component={CornellStepsView} />
 
-          {/* Página de Eventos */}
-          <Stack.Screen name="Events" component={EventsPage} />
+            {/* Método Mind Maps (Mapas Mentales) */}
+            <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView} />
+            <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
 
-        </Stack.Navigator>
-      </NavigationContainer>
+            {/* Página de Eventos */}
+            <Stack.Screen name="Events" component={EventsPage} />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <CompactMusicPlayer />
+      </AudioProvider>
     </AuthProvider>
   );
 }

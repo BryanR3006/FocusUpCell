@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   Register: undefined;
+  RegisterStep2: { password: string };
   Confirmation: undefined;
   Survey: undefined;
   ForgotPassword: undefined;
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   MethodSteps: { methodId: number };
   Profile: undefined;
   MusicAlbums: undefined;
+  MusicSongs: { albumId: number; albumName?: string };
   QuickSession: undefined;
   
 };

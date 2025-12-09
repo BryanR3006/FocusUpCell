@@ -11,11 +11,13 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import {Mail,Lock, Eye, EyeOff} from "lucide-react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import Icon from "react-native-vector-icons/Feather";
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../clientes/apiClient";
 import { API_ENDPOINTS } from "../utils/constants";
+import { FirstLoginModal } from "../ui/FirstLoginModal";
 import type { LoginRequest } from "../types/user";
 import { useNavigation } from "@react-navigation/native";
 
@@ -31,6 +33,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false); // NUEVO
 
   const handleSubmit = async () => {
     if (!formData.correo || !formData.contrasena) {
@@ -49,15 +52,64 @@ const Login: React.FC = () => {
 
     try {
       const resp = await apiClient.post(API_ENDPOINTS.LOGIN, formData);
-      // Esperamos que la respuesta incluya token y user según `AuthResponse`
+      
+      // 1. Guardar token y datos de usuario
       await login(resp.token, resp.user);
-      navigation.navigate("Home" as never);
+      
+      // 2. Verificar si es el primer login
+      const firstLogin = await AsyncStorage.getItem('focusup:firstLogin');
+      console.log('First login status:', firstLogin);
+      
+      if (firstLogin === 'true') {
+        // 3. Si es primer login, mostrar modal
+        setShowFirstLoginModal(true);
+      } else {
+        // 4. Si no es primer login, navegar directamente
+        navigation.navigate("Home" as never);
+      }
+      
     } catch (err: any) {
       const errorMessage =
         err?.message || "Error al iniciar sesión. Verifica tus credenciales.";
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptFirstLogin = async () => {
+    try {
+      console.log('Usuario aceptó completar perfil');
+      
+      // 1. Marcar que ya no es el primer login
+      await AsyncStorage.setItem('focusup:firstLogin', 'false');
+      
+      // 2. Cerrar modal
+      setShowFirstLoginModal(false);
+      
+      // 3. Navegar a la encuesta (Survey)
+      navigation.navigate("profilpage" as never);
+      
+    } catch (error) {
+      console.error('Error al aceptar primer login:', error);
+    }
+  };
+
+  const handleDeclineFirstLogin = async () => {
+    try {
+      console.log('Usuario declinó completar perfil');
+      
+      // 1. Marcar que ya no es el primer login
+      await AsyncStorage.setItem('focusup:firstLogin', 'false');
+      
+      // 2. Cerrar modal
+      setShowFirstLoginModal(false);
+      
+      // 3. Navegar al home
+      navigation.navigate("Home" as never);
+      
+    } catch (error) {
+      console.error('Error al declinar primer login:', error);
     }
   };
 
@@ -111,7 +163,7 @@ const Login: React.FC = () => {
 
           {/* CONTRASEÑA */}
           <View style={styles.inputGroup}>
-            <Lock  size={20} style={styles.icon} />
+            <Lock size={20} style={styles.icon} />
             <TextInput
               placeholder="Contraseña"
               placeholderTextColor="#aaa"
@@ -132,7 +184,7 @@ const Login: React.FC = () => {
               {showPassword ? (
                 <EyeOff size={20} color="#888" />
               ) : (
-                < Eye size={20} color="#888" />
+                <Eye size={20} color="#888" />
               )}
             </TouchableOpacity>
           </View>
@@ -180,10 +232,17 @@ const Login: React.FC = () => {
           
         </View>
       </ScrollView>
+      
+      {/* MODAL DE PRIMER LOGIN */}
+      <FirstLoginModal
+        isOpen={showFirstLoginModal}
+        onAccept={handleAcceptFirstLogin}
+        onDecline={handleDeclineFirstLogin}
+      />
+      
     </KeyboardAvoidingView>
   );
 };
-
 
 
 const styles = StyleSheet.create({

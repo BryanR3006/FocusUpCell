@@ -140,22 +140,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputContainer: {
-    position: "relative",
-    marginBottom: 15,
-  },
-  inputIcon: {
-    position: "absolute",
-    left: 10,
-    top: 16,
-  },
-  input: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: "#232323",
     borderColor: "#2f2f2f",
     borderWidth: 1,
     borderRadius: 10,
+    marginBottom: 15,
+    paddingHorizontal: 12,
+    minHeight: 50,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+
+  input: {
     color: "white",
+    flex: 1,
     paddingVertical: 12,
-    paddingLeft: 40,
+    paddingLeft: 0, 
     paddingRight: 10,
     fontSize: 15,
   },
