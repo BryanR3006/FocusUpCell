@@ -25,4 +25,5 @@ export type RootStackParamList = {
   MusicAlbums: undefined;
   MusicSongs: { albumId: number; albumName?: string };
   QuickSession: undefined;
+  
 };
