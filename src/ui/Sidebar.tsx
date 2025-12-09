@@ -28,6 +28,7 @@ import {
 } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
+import { useAudio } from '../contexts/AudioContext';
 
 const { width, height } = Dimensions.get("window");
 const SIDEBAR_MAX_WIDTH = 420;
@@ -45,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigation = useNavigation();
   const { user, logout, loading } = useAuth();
+  const { stopAndClear } = useAudio();
 
   const sidebarWidth = Math.min(width * 0.85, SIDEBAR_MAX_WIDTH);
   const slideAnim = React.useRef(new Animated.Value(-sidebarWidth)).current;
@@ -128,34 +130,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleLogout = async () => {
-    if (logoutLoading) return;
-    setLogoutLoading(true);
-    try {
-      await new Promise<void>((resolve) => {
-        Animated.parallel([
-          Animated.timing(overlayAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: false,
-            easing: Easing.in(Easing.cubic),
-          }),
-          Animated.timing(slideAnim, {
-            toValue: -sidebarWidth,
-            duration: 240,
-            useNativeDriver: true,
-            easing: Easing.in(Easing.cubic),
-          }),
-        ]).start(() => resolve());
-      });
-
-      await logout();
-      onClose();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      setLogoutLoading(false);
+  if (logoutLoading) return;
+  
+  setLogoutLoading(true);
+  try {
+    console.log('🛑 Iniciando logout con limpieza de audio...');
+    
+    // 1. PRIMERO: Detener el audio completamente
+    if (stopAndClear) {
+      await stopAndClear();
+      console.log('✅ Audio detenido y limpiado');
     }
-  };
+    
+    // 2. Animación para cerrar el sidebar
+    await new Promise<void>((resolve) => {
+      Animated.parallel([
+        Animated.timing(overlayAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+          easing: Easing.in(Easing.cubic),
+        }),
+        Animated.timing(slideAnim, {
+          toValue: -sidebarWidth,
+          duration: 240,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+      ]).start(() => resolve());
+    });
+
+    // 3. Logout de autenticación
+    await logout();
+    console.log('✅ Sesión cerrada');
+    
+    onClose();
+
+// Intenta esto:
+setTimeout(() => {
+  // Esto debería funcionar si navigation está definido
+  (navigation as any).reset({
+    index: 0,
+    routes: [{ name: 'Login' }],
+  });
+}, 100);
+    
+    console.log('✅ Logout completado exitosamente');
+    
+  } catch (error) {
+    console.error("❌ Logout failed:", error);
+  } finally {
+    setLogoutLoading(false);
+  }
+};
 
   const menuItems = [
     {
