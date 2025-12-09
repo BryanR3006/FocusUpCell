@@ -8,7 +8,8 @@ import type { RootStackParamList } from "./src/types/navigation";
 
 import Login from "./src/pages/Login";
 import Home from "./src/pages/Home";
-import Register from "./src/pages/Register";
+import { Register } from "./src/pages/Register";
+import { RegisterStep2 } from "./src/pages/RegisterStep2";
 import Confirmation from "./src/pages/Confirmation";
 import SurveyPage from "./src/pages/Survey";
 import StudyMethodsLibraryPage from "./src/pages/StudyMethodsLibraryPage";
@@ -39,6 +40,7 @@ export default function App() {
             <Stack.Screen name="Home" component={Home} />
             <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
             <Stack.Screen name="Register" component={Register} />
+            <Stack.Screen name="RegisterStep2" component={RegisterStep2} />
             <Stack.Screen name="Confirmation" component={Confirmation} />
             <Stack.Screen name="Survey" component={SurveyPage} />
             <Stack.Screen name="ForgotPassword" component={ForgotPassword} />

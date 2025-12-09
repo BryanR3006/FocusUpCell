@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   Register: undefined;
+  RegisterStep2: { password: string };
   Confirmation: undefined;
   Survey: undefined;
   ForgotPassword: undefined;
