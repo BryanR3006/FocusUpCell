@@ -4,9 +4,9 @@ export const API_ENDPOINTS = {
   // ---------------------------
   // AUTENTICACIÓN
   // ---------------------------
-  AUTH_REQUEST_CODE: "/auth/request-verification-code",
-  AUTH_VERIFY_CODE: "/auth/verify-code",
-  AUTH_REGISTER: "/auth/register", // registro vía auth
+  REQUEST_VERIFICATION_CODE: "/auth/request-verification-code",
+  VERIFY_CODE: "/auth/verify-code",
+  REGISTER: "/auth/register",
   LOGIN: "/users/login",
   LOGOUT: "/users/logout",
 
