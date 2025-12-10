@@ -88,7 +88,7 @@ const Login: React.FC = () => {
       setShowFirstLoginModal(false);
       
       // 3. Navegar a la encuesta (Survey)
-      navigation.navigate("profilpage" as never);
+      navigation.navigate("Profile" as never);
       
     } catch (error) {
       console.error('Error al aceptar primer login:', error);

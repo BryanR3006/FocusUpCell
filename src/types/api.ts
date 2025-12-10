@@ -10,7 +10,10 @@ export interface ApiError {
   error: string;
 }
 
-// Tipos del módulo de música
+/* ---------------------------------------------------------
+ * MÚSICA
+ * --------------------------------------------------------- */
+
 export interface Album {
   id_album: number;
   nombre_album: string;
@@ -26,10 +29,13 @@ export interface Song {
   categoria: string;
   url_musica: string;
   id_album: number;
-  duracion?: number; // En segundos
+  duracion?: number; // segundos
 }
 
-// Tipos del módulo de notificaciones
+/* ---------------------------------------------------------
+ * NOTIFICACIONES
+ * --------------------------------------------------------- */
+
 export interface NotificationSettings {
   idUsuario?: number;
   eventos: boolean;
@@ -53,7 +59,10 @@ export interface NotificationConfigUpdate {
   enabled: boolean;
 }
 
-// Tipos del módulo de sesiones
+/* ---------------------------------------------------------
+ * SESIONES
+ * --------------------------------------------------------- */
+
 export interface SessionDto {
   sessionId: string;
   title: string;
@@ -62,19 +71,19 @@ export interface SessionDto {
   eventId?: number;
   methodId?: number;
   albumId?: number;
-  startTime: string; // ISO string
-  pausedAt?: string; // ISO string cuando está pausada
-  accumulatedMs: number; // Mantenido localmente, sobreescrito por servidor
+  startTime: string; // ISO
+  pausedAt?: string;
+  accumulatedMs: number;
   isRunning: boolean;
-  estado: 'pending' | 'completed'; // Campo del servidor
+  estado: 'pending' | 'completed';
   createdAt: string;
   updatedAt: string;
   elapsedInterval?: string;
-  elapsedMs: number; // Valor autoritativo del servidor
+  elapsedMs: number;
 }
 
 export interface SessionCreateDto {
-  title: string; // Sin userId - viene del JWT
+  title: string;
   description?: string;
   type: 'rapid' | 'scheduled';
   eventId?: number;
@@ -95,7 +104,10 @@ export interface SessionFilters {
   dateTo?: string;
 }
 
-// Estado de sesión activo en el frontend
+/* ---------------------------------------------------------
+ * ESTADO LOCAL DE SESIÓN (solo móvil)
+ * --------------------------------------------------------- */
+
 export interface ActiveSession {
   sessionId: string;
   title: string;
@@ -104,18 +116,21 @@ export interface ActiveSession {
   eventId?: number;
   methodId?: number;
   albumId?: number;
-  startTime: string; // ISO string
-  pausedAt?: string; // ISO string cuando está pausada
-  accumulatedMs: number; // Mantenido localmente
+  startTime: string;
+  pausedAt?: string;
+  accumulatedMs: number;
   isRunning: boolean;
-  status: 'active' | 'paused' | 'completed'; // Estado del cliente
-  isLate?: boolean; // Para sesiones programadas
-  serverEstado: 'pending' | 'completed'; // Estado del servidor
-  elapsedMs: number; // Del servidor
-  persistedAt: string; // Para política de expiración
+  status: 'active' | 'paused' | 'completed';
+  isLate?: boolean;
+  serverEstado: 'pending' | 'completed';
+  elapsedMs: number;
+  persistedAt: string; // Para expiración
 }
 
-// Tipos para métodos de estudio
+/* ---------------------------------------------------------
+ * MÉTODOS DE ESTUDIO
+ * --------------------------------------------------------- */
+
 export interface StudyMethod {
   id_metodo: number;
   titulo: string;
@@ -124,7 +139,10 @@ export interface StudyMethod {
   color_hexa?: string;
 }
 
-// Tipos para reportes de sesiones y métodos
+/* ---------------------------------------------------------
+ * REPORTES DE SESIONES Y MÉTODOS
+ * --------------------------------------------------------- */
+
 export interface SessionReport {
   idReporte: number;
   idSesion: number;
@@ -153,5 +171,3 @@ export interface MethodReport {
   estado: string;
   fechaCreacion: string;
 }
-
-

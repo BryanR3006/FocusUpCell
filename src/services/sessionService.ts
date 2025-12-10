@@ -1,16 +1,10 @@
 /**
- * Servicio de API para operaciones de sesiones de concentración
- *
- * Este módulo proporciona una interfaz unificada para todas las operaciones
- * relacionadas con sesiones de concentración. Maneja el mapeo entre los
- * formatos del servidor (snake_case) y del cliente (camelCase), así como
- * la gestión de errores y reintentos.
- *
- * Todas las llamadas API incluyen manejo de autenticación JWT automático.
+ * Servicio de API para operaciones de sesiones de concentración - Versión móvil
+ * Adaptado para React Native/Expo con AsyncStorage
  */
 
-import { apiClient } from '../clientes/apiClient';
-import { API_ENDPOINTS } from '../utils/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 import type {
   SessionDto,
   SessionCreateDto,
@@ -18,251 +12,304 @@ import type {
   ActiveSession
 } from '../types/api';
 import { mapServerSession, mapClientToServerStatus } from '../utils/sessionMappers';
-import { getBroadcastChannel } from '../utils/broadcastChannel';
 
-/**
- * Servicio principal para operaciones de sesiones
- */
-class SessionService {
-  /**
-   * Crea una nueva sesión de concentración
-   *
-   * @param payload - Datos para crear la sesión
-   * @returns DTO de la sesión creada
-   */
-  async startSession(payload: SessionCreateDto): Promise<SessionDto> {
-    try {
-      const response = await apiClient.post(API_ENDPOINTS.SESSIONS, payload);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error creando sesión:', error);
-      throw error;
+/* ---------------------------------------------------------
+   Utilidades internas
+--------------------------------------------------------- */
+
+const getAuthToken = async (): Promise<string> => {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) throw new Error('No authentication token found');
+  return token;
+};
+
+const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('userId');
+        throw new Error('Authentication expired. Please login again.');
+      }
+      throw new Error(`Request failed with status ${response.status}`);
     }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API Request error:', error);
+    throw error;
+  }
+};
+
+/* ---------------------------------------------------------
+   Servicio principal
+--------------------------------------------------------- */
+
+class SessionService {
+  /* -----------------------------------------
+     Obtener detalles de una sesión
+  ----------------------------------------- */
+  async getSession(sessionId: string): Promise<SessionDto> {
+    console.log('[SESSION SERVICE] Obteniendo sesión:', sessionId);
+    const responseData = await makeRequest(`${API_ENDPOINTS.SESSIONS}/${sessionId}`, {
+      method: 'GET',
+    });
+
+    const sessionData = responseData.data || responseData;
+    return this.mapSnakeToCamel(sessionData);
   }
 
-  /**
-   * Pausa una sesión activa usando el nuevo endpoint de reportes
-   *
-   * Actualización crítica: Se reemplaza el endpoint deprecated POST /api/v1/sessions/{id}/pause
-   * por el nuevo PATCH /api/v1/reports/sessions/{sessionId}/progress con status "pending".
-   *
-   * @param sessionId - ID de la sesión a pausar
-   * @param elapsedMs - Tiempo transcurrido en milisegundos
-   */
+  /* -----------------------------------------
+     Pausar sesión
+  ----------------------------------------- */
   async pauseSession(sessionId: string, elapsedMs: number): Promise<void> {
     try {
-      // Nuevo contrato API: PATCH /api/v1/reports/sessions/{id}/progress
-      // Contract: {"status": "completed"|"pending", "estado": "completed"|"pending", "elapsedMs": number, "duracion": number, "notes": string}
-      // Se calcula duracion en segundos desde elapsedMs en milisegundos
+      console.log('[SESSION SERVICE] Pausando sesión:', sessionId);
+
       const duracion = Math.floor(elapsedMs / 1000);
-      await apiClient.patch(`/reports/sessions/${sessionId}/progress`, {
-        status: 'pending',
-        estado: 'pending',
-        elapsedMs: elapsedMs,
-        duracion: duracion
+
+      await makeRequest(`/reports/sessions/${sessionId}/progress`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'pending',
+          estado: 'pending',
+          elapsedMs,
+          duracion,
+        }),
       });
 
-      // Emitir broadcast para notificar a otras páginas sobre la actualización
-      const { getBroadcastChannel } = await import('../utils/broadcastChannel');
-      getBroadcastChannel().broadcastSessionPaused();
+      console.log('Sesión pausada exitosamente');
     } catch (error) {
-      console.error('Error pausando sesión con nuevo endpoint:', error);
+      console.error('Error pausando sesión:', error);
       throw error;
     }
   }
 
-  /**
-   * Reanuda una sesión pausada - DEPRECATED
-   *
-   * Esta función ha sido eliminada ya que la reanudación de sesiones
-   * ahora se maneja únicamente del lado del cliente. El backend ya no
-   * expone un endpoint para reanudar sesiones.
-   *
-   * @deprecated Use client-side session resumption instead
-   */
-  async resumeSession(_sessionId: string): Promise<void> {
-    console.warn('resumeSession is deprecated. Session resumption is now handled client-side only.');
-    // No longer calls any backend endpoint
-    return Promise.resolve();
-  }
-
-  /**
-   * Marca una sesión como "terminar más tarde" usando el nuevo endpoint de reportes
-   *
-   * Actualización crítica: Se reemplaza el endpoint deprecated POST /api/v1/sessions/{id}/finish-later
-   * por el nuevo PATCH /api/v1/reports/sessions/{sessionId}/progress con status "pending".
-   *
-   * @param sessionId - ID de la sesión
-   * @param elapsedMs - Tiempo transcurrido en milisegundos
-   * @param notes - Notas adicionales para marcar como aplazada
-   */
+  /* -----------------------------------------
+     Finish later
+  ----------------------------------------- */
   async finishLater(sessionId: string, elapsedMs: number, notes?: string): Promise<void> {
-    try {
-      // Nuevo contrato API: PATCH /api/v1/reports/sessions/{id}/progress
-      // Contract: {"status": "completed"|"pending", "estado": "completed"|"pending", "elapsedMs": number, "duracion": number, "notes": string}
-      // Se calcula duracion en segundos desde elapsedMs en milisegundos
-      const duracion = Math.floor(elapsedMs / 1000);
-      const payload: any = {
-        status: 'pending',
-        estado: 'pending',
-        elapsedMs: elapsedMs,
-        duracion: duracion
-      };
-      if (notes) {
-        payload.notes = notes;
-      }
-      await apiClient.patch(`/reports/sessions/${sessionId}/progress`, payload);
+    console.log('[SESSION SERVICE] finishLater:', sessionId);
 
-      // Emitir broadcast para notificar a otras páginas sobre la actualización
-      getBroadcastChannel().broadcastSessionPaused(); // Usar paused ya que es "pending"
-    } catch (error) {
-      console.error('Error marcando finish-later con nuevo endpoint:', error);
-      throw error;
-    }
+    const duracion = Math.floor(elapsedMs / 1000);
+    const payload: any = {
+      status: 'pending',
+      estado: 'pending',
+      elapsedMs,
+      duracion,
+    };
+    if (notes) payload.notes = notes;
+
+    await makeRequest(`/reports/sessions/${sessionId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    console.log('Sesión marcada como finish-later');
   }
 
-  /**
-   * Completa una sesión usando el nuevo endpoint de reportes
-   *
-   * Actualización crítica: Se reemplaza el endpoint deprecated POST /api/v1/sessions/{id}/complete
-   * por el nuevo PATCH /api/v1/reports/sessions/{sessionId}/progress con status "completed".
-   *
-   * @param sessionId - ID de la sesión a completar
-   * @param elapsedMs - Tiempo transcurrido en milisegundos
-   * @param notes - Notas adicionales para la sesión completada
-   */
+  /* -----------------------------------------
+     Completar sesión
+  ----------------------------------------- */
   async completeSession(sessionId: string, elapsedMs: number, notes?: string): Promise<void> {
-    try {
-      // Nuevo contrato API: PATCH /api/v1/reports/sessions/{id}/progress
-      // Contract: {"status": "completed"|"pending", "estado": "completed"|"pending", "elapsedMs": number, "duracion": number, "notes": string}
-      // Se calcula duracion en segundos desde elapsedMs en milisegundos
-      const duracion = Math.floor(elapsedMs / 1000);
-      const payload: any = {
-        status: 'completed',
-        estado: 'completed',
-        elapsedMs: elapsedMs,
-        duracion: duracion
+    console.log('[SESSION SERVICE] Completando sesión:', sessionId);
+
+    const duracion = Math.floor(elapsedMs / 1000);
+    const payload: any = {
+      status: 'completed',
+      estado: 'completed',
+      elapsedMs,
+      duracion,
+    };
+    if (notes) payload.notes = notes;
+
+    await makeRequest(`/reports/sessions/${sessionId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    console.log('Sesión completada');
+
+    // Limpiar local
+    await AsyncStorage.removeItem('focusup:activeSession');
+    await AsyncStorage.removeItem('focusup:directResume');
+  }
+
+  /* -----------------------------------------
+     Crear nueva sesión
+  ----------------------------------------- */
+  async startSession(payload: SessionCreateDto): Promise<SessionDto> {
+    console.log('[SESSION SERVICE] Creando sesión');
+
+    const responseData = await makeRequest(API_ENDPOINTS.SESSIONS, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    const sessionData = responseData.data || responseData;
+
+    if (sessionData.sessionId) {
+      const activeSession: ActiveSession = {
+        sessionId: sessionData.sessionId,
+        title: sessionData.title || 'Sesión de concentración',
+        description: sessionData.description || '',
+        type: sessionData.type || 'focus',
+        eventId: sessionData.eventId,
+        methodId: sessionData.methodId,
+        albumId: sessionData.albumId,
+        startTime: new Date().toISOString(),
+        pausedAt: undefined,
+        accumulatedMs: 0,
+        isRunning: true,
+        status: 'active',
+        serverEstado: 'pending',
+        elapsedMs: 0,
+        persistedAt: new Date().toISOString(),
       };
-      if (notes) {
-        payload.notes = notes;
-      }
-      await apiClient.patch(`/reports/sessions/${sessionId}/progress`, payload);
 
-      // Emitir broadcast para notificar a otras páginas sobre la actualización
-      getBroadcastChannel().broadcastSessionCompleted();
-    } catch (error) {
-      console.error('Error completando sesión con nuevo endpoint:', error);
-      throw error;
+      await AsyncStorage.setItem('focusup:activeSession', JSON.stringify(activeSession));
     }
+
+    return this.mapSnakeToCamel(sessionData);
   }
 
-  /**
-   * Obtiene los detalles de una sesión específica
-   *
-   * @param sessionId - ID de la sesión
-   * @returns DTO de la sesión con datos expandidos
-   */
-  async getSession(sessionId: string): Promise<SessionDto> {
-    try {
-      const response = await apiClient.get(`${API_ENDPOINTS.SESSIONS}/${sessionId}`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error obteniendo sesión:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Crea o recupera una sesión desde un evento programado
-   *
-   * Este endpoint valida la propiedad del evento y crea una sesión si no existe,
-   * o recupera la sesión existente. Se utiliza para deep links desde correos electrónicos
-   * de eventos de concentración.
-   *
-   * @param eventId - ID del evento programado
-   * @returns DTO de la sesión creada/recuperada
-   */
+  /* -----------------------------------------
+     Obtener desde evento
+  ----------------------------------------- */
   async getSessionFromEvent(eventId: string): Promise<SessionDto> {
-    try {
-      const response = await apiClient.get(`${API_ENDPOINTS.SESSIONS}/from-event/${eventId}`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error obteniendo sesión desde evento:', error);
-      throw error;
-    }
+    const responseData = await makeRequest(`${API_ENDPOINTS.SESSIONS}/from-event/${eventId}`, {
+      method: 'GET',
+    });
+
+    return this.mapSnakeToCamel(responseData.data || responseData);
   }
 
-  /**
-   * Lista sesiones del usuario con filtros opcionales
-   *
-   * @param filters - Filtros opcionales para la consulta
-   * @returns Array de DTOs de sesiones
-   */
+  /* -----------------------------------------
+     Listar sesiones del usuario
+  ----------------------------------------- */
   async listUserSessions(filters?: SessionFilters): Promise<SessionDto[]> {
-    try {
-      const params = new URLSearchParams();
+    const params = new URLSearchParams();
 
-      if (filters?.type) params.append('type', filters.type);
-      if (filters?.status) params.append('status', filters.status);
-      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
 
-      const queryString = params.toString();
-      const url = queryString
-        ? `${API_ENDPOINTS.SESSIONS}?${queryString}`
-        : API_ENDPOINTS.SESSIONS;
+    const url = params.toString()
+      ? `${API_ENDPOINTS.SESSIONS}?${params.toString()}`
+      : API_ENDPOINTS.SESSIONS;
 
-      const response = await apiClient.get(url);
-      return response.data.data || response.data || [];
-    } catch (error) {
-      console.error('Error listando sesiones:', error);
-      throw error;
-    }
+    const responseData = await makeRequest(url, { method: 'GET' });
+    const sessions = responseData.data || responseData || [];
+
+    return sessions.map((s: any) => this.mapSnakeToCamel(s));
   }
 
-  /**
-   * Obtiene sesiones pendientes que han estado inactivas por X días
-   * (para debugging/cron del administrador)
-   *
-   * @param days - Número de días de inactividad
-   * @returns Array de DTOs de sesiones
-   */
+  /* -----------------------------------------
+     Sesiones viejas pendientes
+  ----------------------------------------- */
   async getPendingAged(days: number): Promise<SessionDto[]> {
+    const responseData = await makeRequest(
+      `${API_ENDPOINTS.SESSIONS}/pending-aged?days=${days}`,
+      { method: 'GET' }
+    );
+
+    const sessions = responseData.data || responseData || [];
+    return sessions.map((s: any) => this.mapSnakeToCamel(s));
+  }
+
+  /* -----------------------------------------
+     Mapper snake_case → camelCase
+  ----------------------------------------- */
+  private mapSnakeToCamel(obj: any): any {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(i => this.mapSnakeToCamel(i));
+
+    const newObj: any = {};
+    Object.keys(obj).forEach(key => {
+      const camelKey = key.replace(/_([a-z])/g, (_, l) => l.toUpperCase());
+      newObj[camelKey] = typeof obj[key] === 'object'
+        ? this.mapSnakeToCamel(obj[key])
+        : obj[key];
+    });
+    return newObj;
+  }
+
+  /* -----------------------------------------
+     Gestión local de sesión activa
+  ----------------------------------------- */
+  async getActiveSession(): Promise<ActiveSession | null> {
     try {
-      const response = await apiClient.get(`${API_ENDPOINTS.SESSIONS}/pending-aged?days=${days}`);
-      return response.data.data || response.data || [];
-    } catch (error) {
-      console.error('Error obteniendo sesiones pendientes antiguas:', error);
-      throw error;
+      const raw = await AsyncStorage.getItem('focusup:activeSession');
+      if (!raw) return null;
+
+      const session = JSON.parse(raw) as ActiveSession;
+
+      if (session.persistedAt) {
+        const daysDiff =
+          (Date.now() - new Date(session.persistedAt).getTime()) /
+          (1000 * 60 * 60 * 24);
+
+        if (daysDiff > 7) {
+          await AsyncStorage.removeItem('focusup:activeSession');
+          return null;
+        }
+      }
+
+      return session;
+    } catch {
+      return null;
     }
   }
 
+  async saveActiveSession(session: ActiveSession): Promise<void> {
+    await AsyncStorage.setItem(
+      'focusup:activeSession',
+      JSON.stringify({ ...session, persistedAt: new Date().toISOString() })
+    );
+  }
 
-  /**
-   * Mapea un DTO del servidor a un objeto ActiveSession del cliente
-   *
-   * @param dto - DTO recibido del servidor
-   * @param persistedAt - Timestamp de persistencia local
-   * @returns Objeto ActiveSession listo para usar
-   */
+  async clearActiveSession(): Promise<void> {
+    await AsyncStorage.removeItem('focusup:activeSession');
+    await AsyncStorage.removeItem('focusup:directResume');
+  }
+
+  async checkAndRestoreSession(): Promise<ActiveSession | null> {
+    const direct = await AsyncStorage.getItem('focusup:directResume');
+    if (direct === 'true') {
+      const session = await this.getActiveSession();
+      await AsyncStorage.removeItem('focusup:directResume');
+      return session;
+    }
+    return null;
+  }
+
+  /* -----------------------------------------
+     Enlaces para mappers
+  ----------------------------------------- */
   mapServerSession(dto: SessionDto, persistedAt?: string): ActiveSession {
     return mapServerSession(dto, persistedAt);
   }
 
-  /**
-   * Convierte estado de cliente a estado de servidor
-   *
-   * @param clientStatus - Estado del cliente
-   * @param isRunning - Si está corriendo
-   * @returns Estado del servidor
-   */
-  mapClientToServerStatus(clientStatus: 'active' | 'paused' | 'completed'): 'pending' | 'completed' {
-    return mapClientToServerStatus(clientStatus);
+  mapClientToServerStatus(
+    status: 'active' | 'paused' | 'completed'
+  ): 'pending' | 'completed' {
+    return mapClientToServerStatus(status);
   }
 }
 
-// Instancia singleton del servicio
+/* Exportar singleton */
 const sessionServiceInstance = new SessionService();
-
 export { sessionServiceInstance as sessionService };
 export default sessionServiceInstance;

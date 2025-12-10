@@ -1,738 +1,185 @@
-/**
- * Proveedor global de estado para sesiones de concentración
- *
- * Este componente maneja todo el estado y lógica de las sesiones de concentración
- * a nivel global de la aplicación. Es crítico que este provider nunca se desmonte
- * durante la navegación SPA para mantener la persistencia del audio y el estado.
- *
- * Características principales:
- * - Estado global de sesión activa
- * - Sincronización multi-pestaña
- * - Cola offline para acciones críticas
- * - Detección de suspensión del sistema
- * - Persistencia automática en localStorage
- * - Integración con servicios de audio y métodos
- */
+import React, { useState, useEffect, useRef } from "react";
+import { AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { API_BASE_URL } from "../utils/constants";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { ReactNode } from 'react';
-import type { ActiveSession, SessionCreateDto } from '../types/api';
-import { sessionService } from '../services/sessionService';
-import { getBroadcastChannel, type BroadcastMessage } from '../utils/broadcastChannel';
-import { getOfflineQueue } from '../utils/offlineQueue';
-import { getSleepDetector } from '../utils/sleepDetector';
-import { mapServerSession, isSessionExpired } from '../utils/sessionMappers';
-import { useMusicPlayer } from '../contexts/MusicPlayerContext';
-import { replaceIfSessionAlbum } from '../services/audioService';
-import { getSongsByAlbumId } from '../utils/musicApi';
-
-// Claves para localStorage
-const SESSION_STORAGE_KEY = 'focusup:activeSession';
-
-// Estado del provider
-interface ProviderState {
-  activeSession: ActiveSession | null;
-  isMinimized: boolean;
-  showContinueModal: boolean;
-  isSyncing: boolean; // Indicador de sincronización offline
-  tabLockToken: string | null; // Token para control multi-pestaña
-  showCountdown: boolean; // Mostrar cuenta regresiva
+interface ConcentrationSession {
+  sessionId: string;
+  methodId: string;
+  startTime: number;
+  duration: number;
+  isPaused: boolean;
+  reason?: string;
 }
 
-// API del contexto
 interface ConcentrationSessionContextType {
-  // Gestión de sesiones
-  startSession: (payload: SessionCreateDto) => Promise<void>;
-  startSessionWithCountdown: (payload: SessionCreateDto) => Promise<void>;
-  pauseSession: () => Promise<void>;
+  activeSession: ConcentrationSession | null;
+  isActive: boolean;
+  isPaused: boolean;
+  remainingTime: number;
+  startSession: (methodId: string) => Promise<void>;
+  pauseSession: (reason?: string) => Promise<void>;
   resumeSession: () => Promise<void>;
-  finishLater: () => Promise<void>;
-  completeSession: () => Promise<void>;
-
-  // Control de UI
-  minimize: () => void;
-  maximize: () => void;
-  hideContinueModal: () => void;
-  showCountdown: () => void;
-  hideCountdown: () => void;
-
-  // Acceso a estado
-  getState: () => ProviderState;
-
-  // Eventos
-  onMethodCompleted: (callback: () => void) => () => void;
-  onStateChange: (callback: (state: ProviderState) => void) => () => void;
-
-  // Multi-pestaña
-  broadcastState: () => void;
-  acquireTabLock: () => boolean;
-  releaseTabLock: () => void;
-
-  // Direct resume
-  checkDirectResume: () => void;
+  endSession: () => Promise<void>;
 }
 
-// Contexto
-const ConcentrationSessionContext = createContext<ConcentrationSessionContextType | undefined>(undefined);
-
-// Props del provider
-interface ConcentrationSessionProviderProps {
-  children: ReactNode;
-}
-
-/**
- * Proveedor global de sesiones de concentración
- */
-export const ConcentrationSessionProvider: React.FC<ConcentrationSessionProviderProps> = ({ children }) => {
-  // Estado principal
-  const [state, setState] = useState<ProviderState>({
+export const ConcentrationSessionContext =
+  React.createContext<ConcentrationSessionContextType>({
     activeSession: null,
-    isMinimized: false,
-    showContinueModal: false,
-    isSyncing: false,
-    tabLockToken: null,
-    showCountdown: false,
+    isActive: false,
+    isPaused: false,
+    remainingTime: 0,
+    startSession: async () => {},
+    pauseSession: async () => {},
+    resumeSession: async () => {},
+    endSession: async () => {},
   });
 
-  // Refs para callbacks y estado persistente
-  const methodCompletedCallbacks = useRef<Map<string, () => void>>(new Map());
-  const stateChangeCallbacks = useRef<Map<string, (state: ProviderState) => void>>(new Map());
-  const tabLockToken = useRef<string | null>(null);
-
-  // Servicios
-  const broadcastChannel = getBroadcastChannel();
-  const offlineQueue = getOfflineQueue();
-  const sleepDetector = getSleepDetector();
-
-  /**
-   * Inicializa el provider al montar
-   */
-  useEffect(() => {
-    initializeProvider();
-    setupBroadcastListeners();
-    setupSleepDetection();
-
-    // Cleanup al desmontar
-    return () => {
-      broadcastChannel.close();
-      sleepDetector.stop();
-    };
-  }, []);
-
-  /**
-   * Inicializa el provider cargando estado persistido
-   */
-  const initializeProvider = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-      const directResume = localStorage.getItem('focusup:directResume');
-
-      if (stored) {
-        const parsed = JSON.parse(stored);
-
-        // Verificar expiración
-        if (isSessionExpired(parsed.persistedAt)) {
-          console.log('Sesión expirada, eliminando');
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-          localStorage.removeItem('focusup:directResume');
-          return;
-        }
-
-        // Mapear sesión del servidor al cliente
-        const session = mapServerSession(parsed, parsed.persistedAt);
-
-        // Verificar que la sesión tenga un ID válido
-        if (!session.sessionId) {
-          console.warn('Sesión restaurada sin ID válido, eliminando');
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-          localStorage.removeItem('focusup:directResume');
-          return;
-        }
-
-        // Si la sesión estaba corriendo cuando se persistió, actualizar startTime al tiempo actual
-        // para que el timer continue correctamente desde el punto de restauración
-        const sessionWithCorrectedTimer = session.isRunning ? {
-          ...session,
-          startTime: new Date().toISOString(), // Nuevo punto de referencia para continuar el timer
-        } : session;
-
-        if (directResume === 'true') {
-          // Continuación directa desde reportes - iniciar minimizada sin modal
-          setState(prev => ({
-            ...prev,
-            activeSession: sessionWithCorrectedTimer,
-            isMinimized: true,
-            showContinueModal: false,
-          }));
-          localStorage.removeItem('focusup:directResume');
-        } else {
-          // Inicialización normal - mostrar modal de continuar
-          setState(prev => ({
-            ...prev,
-            activeSession: sessionWithCorrectedTimer,
-            showContinueModal: true,
-          }));
-        }
-
-        // Broadcast a otras pestañas
-        broadcastChannel.broadcastSessionUpdate(session);
-      }
-    } catch (error) {
-      console.error('Error inicializando provider:', error);
-      localStorage.removeItem('focusup:directResume');
-    }
-  }, []);
-
-  /**
-   * Configura listeners para broadcast multi-pestaña
-   */
-  const setupBroadcastListeners = useCallback(() => {
-    broadcastChannel.addListener('session-provider', (message: BroadcastMessage) => {
-      switch (message.type) {
-        case 'SESSION_UPDATE':
-          if (message.state) {
-            setState(prev => ({
-              ...prev,
-              activeSession: message.state || null,
-            }));
-          }
-          break;
-
-        case 'SESSION_COMPLETED':
-        case 'SESSION_PAUSED':
-        case 'SESSION_RESUMED':
-          // Recargar estado desde servidor si es necesario
-          if (state.activeSession) {
-            reloadSessionState(state.activeSession.sessionId);
-          }
-          break;
-      }
-    });
-  }, [state.activeSession]);
-
-  /**
-   * Configura detección de suspensión del sistema
-   */
-  const setupSleepDetection = useCallback(() => {
-    sleepDetector.addCallback('session-timer-correction', (sleptMs: number) => {
-      console.log(`Corrigiendo timer después de ${sleptMs}ms de suspensión`);
-      // La corrección ocurre automáticamente en getVisibleTime()
-      // No necesitamos actualizar estado aquí
-    });
-
-    sleepDetector.start();
-  }, []);
-
-  /**
-   * Recarga el estado de la sesión desde el servidor
-   */
-  const reloadSessionState = useCallback(async (sessionId: string) => {
-    try {
-      const sessionDto = await sessionService.getSession(sessionId);
-      const session = mapServerSession(sessionDto);
-
-      setState(prev => ({
-        ...prev,
-        activeSession: session,
-      }));
-    } catch (error) {
-      console.error('Error recargando estado de sesión:', error);
-    }
-  }, []);
-
-  /**
-   * Persiste el estado en localStorage
-   */
-  const persistState = useCallback((session: ActiveSession | null) => {
-    try {
-      if (session) {
-        // Si la sesión está corriendo, actualizar elapsedMs con el tiempo actual acumulado
-        // para que al restaurar, el timer muestre el tiempo correcto
-        const sessionToPersist = session.isRunning ? {
-          ...session,
-          elapsedMs: (session.elapsedMs || 0) + (session.startTime ? Date.now() - new Date(session.startTime).getTime() : 0),
-        } : session;
-
-        const toPersist = {
-          ...sessionToPersist,
-          persistedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toPersist));
-      } else {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    } catch (error) {
-      console.error('Error persistiendo estado:', error);
-    }
-  }, []);
-
-  /**
-   * Inicia una nueva sesión
-   * Nota: La reproducción de música se maneja en el componente StartSession
-   * para evitar el uso de hooks en servicios y mantener la separación de responsabilidades
-   */
-  const startSession = useCallback(async (payload: SessionCreateDto) => {
-    try {
-      setState(prev => ({ ...prev, isSyncing: true }));
-
-      // Crear sesión en el servidor
-      const sessionDto = await sessionService.startSession(payload);
-      const session = mapServerSession(sessionDto);
-
-      // Para sesiones nuevas, asegurar que startTime esté establecido
-      const sessionWithStartTime = {
-        ...session,
-        startTime: session.startTime || new Date().toISOString(),
-        isRunning: true, // Nueva sesión siempre inicia corriendo
-      };
-
-      // Actualizar estado
-      setState(prev => ({
-        ...prev,
-        activeSession: sessionWithStartTime,
-        isMinimized: false,
-        showContinueModal: false,
-        isSyncing: false,
-      }));
-
-      // Persistir
-      persistState(session);
-
-      // Broadcast a otras pestañas
-      broadcastChannel.broadcastSessionUpdate(session);
-
-    } catch (error) {
-      console.error('Error iniciando sesión:', error);
-      setState(prev => ({ ...prev, isSyncing: false }));
-      throw error;
-    }
-  }, [persistState]);
-
-  /**
-   * Pausa la sesión actual usando el nuevo endpoint de reportes
-   *
-   * Lógica del timer de pausa/resume:
-   * - Al pausar: calcula tiempo total acumulado y lo guarda en elapsedMs
-   * - Al resumir: establece nuevo startTime para continuar acumulando desde cero
-   * - Timer visible = elapsedMs acumulado + (tiempo actual - startTime) si está corriendo
-   * - Timer visible = elapsedMs acumulado si está pausado
-   *
-   * Actualización crítica: Se calcula elapsedMs correctamente y se usa
-   * PATCH /api/v1/reports/sessions/{id}/progress con status "pending".
-   */
-  const pauseSession = useCallback(async () => {
-    console.log('[PROVIDER] pauseSession called. Session ID:', state.activeSession?.sessionId, 'isRunning:', state.activeSession?.isRunning);
-    if (!state.activeSession || !state.activeSession.isRunning) {
-      console.log('[PROVIDER] pauseSession aborted: no active session or not running');
-      return;
-    }
-
-    try {
-      setState(prev => ({ ...prev, isSyncing: true }));
-
-      // Calcular tiempo transcurrido correctamente
-      // Fórmula: elapsedMs = (sesión.elapsedMs || 0) + (Date.now() - sesión.startTime)
-      const currentElapsedMs = (state.activeSession.elapsedMs || 0) +
-        (state.activeSession.startTime ? Date.now() - new Date(state.activeSession.startTime).getTime() : 0);
-
-      console.log('[PROVIDER] Pausing session with elapsedMs:', currentElapsedMs);
-
-      // Intentar pausa en servidor usando nuevo endpoint, o enqueue si offline
-      if (navigator.onLine) {
-        await sessionService.pauseSession(state.activeSession.sessionId, currentElapsedMs);
-        console.log('[PROVIDER] Session paused successfully, report created');
-      } else {
-        offlineQueue.enqueue('pause', state.activeSession.sessionId, { elapsedMs: currentElapsedMs });
-        console.log('[PROVIDER] Session pause enqueued for offline');
-      }
-
-      // Actualizar estado local con tiempo acumulado correcto
-      // CRÍTICO: Actualizar elapsedMs para que el timer muestre el tiempo correcto cuando está pausado
-      const updatedSession = {
-        ...state.activeSession,
-        elapsedMs: currentElapsedMs, // Guardar tiempo acumulado para mostrar timer correcto en pausa
-        isRunning: false,
-        pausedAt: new Date().toISOString(),
-        status: 'paused' as const,
-        serverEstado: 'pending' as const,
-      };
-
-      setState(prev => ({
-        ...prev,
-        activeSession: updatedSession,
-        isSyncing: false,
-      }));
-
-      persistState(updatedSession);
-      broadcastChannel.broadcastSessionPaused();
-
-    } catch (error) {
-      console.error('Error pausando sesión:', error);
-      setState(prev => ({ ...prev, isSyncing: false }));
-      throw error;
-    }
-  }, [state.activeSession]);
-
-  /**
-   * Reanuda la sesión pausada
-   *
-   * Lógica del timer de resume:
-   * - Mantiene elapsedMs acumulado de la pausa anterior
-   * - Establece nuevo startTime = Date.now() para que el timer continue acumulando desde cero
-   * - Timer visible continuará sumando: elapsedMs + (Date.now() - nuevo startTime)
-   */
-  const resumeSession = useCallback(async () => {
-    if (!state.activeSession || state.activeSession.isRunning) return;
-
-    try {
-      setState(prev => ({ ...prev, isSyncing: true }));
-
-      // Intentar reanudar en servidor, o enqueue si offline
-      if (navigator.onLine) {
-        await sessionService.resumeSession(state.activeSession.sessionId);
-      } else {
-        offlineQueue.enqueue('resume', state.activeSession.sessionId);
-      }
-
-      // Actualizar estado local - mantener elapsedMs acumulado y actualizar startTime para continuar el timer
-      // CRÍTICO: Nuevo startTime permite que el timer continue acumulando correctamente
-      const updatedSession = {
-        ...state.activeSession,
-        startTime: new Date().toISOString(), // Nuevo punto de referencia para continuar acumulando tiempo
-        isRunning: true,
-        pausedAt: undefined,
-        status: 'active' as const,
-        serverEstado: 'pending' as const,
-      };
-
-      setState(prev => ({
-        ...prev,
-        activeSession: updatedSession,
-        isSyncing: false,
-      }));
-
-      persistState(updatedSession);
-      broadcastChannel.broadcastSessionResumed();
-
-    } catch (error) {
-      console.error('Error reanudando sesión:', error);
-      setState(prev => ({ ...prev, isSyncing: false }));
-      throw error;
-    }
-  }, [state.activeSession]);
-
-  /**
-   * Marca la sesión como "terminar más tarde"
-   *
-   * Actualización crítica: Se calcula elapsedMs correctamente usando la fórmula:
-   * elapsedMs = (sesión.elapsedMs || 0) + (Date.now() - sesión.startTime)
-   * y se pasa al nuevo endpoint PATCH /api/v1/reports/sessions/{id}/progress
-   */
-  const finishLater = useCallback(async () => {
-    if (!state.activeSession) return;
-
-    try {
-      setState(prev => ({ ...prev, isSyncing: true }));
-
-      // Calcular tiempo transcurrido correctamente
-      // Fórmula: elapsedMs = (sesión.elapsedMs || 0) + (Date.now() - sesión.startTime)
-      const currentElapsedMs = (state.activeSession.elapsedMs || 0) +
-        (state.activeSession.startTime ? Date.now() - new Date(state.activeSession.startTime).getTime() : 0);
-
-      if (navigator.onLine) {
-        // Enviar PATCH con status "pending" y notas para marcar como aplazada
-        await sessionService.finishLater(state.activeSession.sessionId, currentElapsedMs, "Aplazada desde UI");
-      } else {
-        offlineQueue.enqueue('finish-later', state.activeSession.sessionId, {
-          elapsedMs: currentElapsedMs,
-          notes: "Aplazada desde UI"
-        });
-      }
-
-      // Limpiar estado
-      setState(prev => ({
-        ...prev,
-        activeSession: null,
-        isMinimized: false,
-        isSyncing: false,
-      }));
-
-      persistState(null);
-      broadcastChannel.broadcastSessionUpdate(null);
-
-    } catch (error) {
-      console.error('Error en finish later:', error);
-      setState(prev => ({ ...prev, isSyncing: false }));
-      throw error;
-    }
-  }, [state.activeSession]);
-
-  /**
-   * Completa la sesión
-   *
-   * Actualización crítica: Se calcula elapsedMs correctamente usando la fórmula:
-   * elapsedMs = (sesión.elapsedMs || 0) + (Date.now() - sesión.startTime)
-   * y se pasa al nuevo endpoint PATCH /api/v1/reports/sessions/{id}/progress
-   */
-  const completeSession = useCallback(async () => {
-    if (!state.activeSession) return;
-
-    try {
-      setState(prev => ({ ...prev, isSyncing: true }));
-
-      // Calcular tiempo transcurrido correctamente
-      // Fórmula: elapsedMs = (sesión.elapsedMs || 0) + (Date.now() - sesión.startTime)
-      const currentElapsedMs = (state.activeSession.elapsedMs || 0) +
-        (state.activeSession.startTime ? Date.now() - new Date(state.activeSession.startTime).getTime() : 0);
-
-      if (navigator.onLine) {
-        // Enviar PATCH con status "completed", duracion y notas
-        await sessionService.completeSession(state.activeSession.sessionId, currentElapsedMs, "Sesión completada exitosamente");
-      } else {
-        offlineQueue.enqueue('complete', state.activeSession.sessionId, {
-          elapsedMs: currentElapsedMs,
-          notes: "Sesión completada exitosamente"
-        });
-      }
-
-      // Limpiar estado
-      setState(prev => ({
-        ...prev,
-        activeSession: null,
-        isMinimized: false,
-        isSyncing: false,
-      }));
-
-      persistState(null);
-      broadcastChannel.broadcastSessionUpdate(null);
-      broadcastChannel.broadcastSessionCompleted();
-
-    } catch (error) {
-      console.error('Error completando sesión:', error);
-      setState(prev => ({ ...prev, isSyncing: false }));
-      throw error;
-    }
-  }, [state.activeSession]);
-
-  /**
-   * Minimiza la sesión
-   */
-  const minimize = useCallback(() => {
-    setState(prev => ({ ...prev, isMinimized: true }));
-  }, []);
-
-  /**
-   * Maximiza la sesión
-   */
-  const maximize = useCallback(() => {
-    setState(prev => ({ ...prev, isMinimized: false }));
-  }, []);
-
-  /**
-   * Oculta el modal de continuar sesión
-   */
-  const hideContinueModal = useCallback(() => {
-    setState(prev => ({ ...prev, showContinueModal: false }));
-  }, []);
-
-  /**
-   * Obtiene el estado actual
-   */
-  const getState = useCallback(() => state, [state]);
-
-  /**
-   * Registra callback para completación de método
-   */
-  const onMethodCompleted = useCallback((callback: () => void) => {
-    const id = `method-callback-${Date.now()}-${Math.random()}`;
-    methodCompletedCallbacks.current.set(id, callback);
-
-    return () => {
-      methodCompletedCallbacks.current.delete(id);
-    };
-  }, []);
-
-  /**
-   * Registra callback para cambios de estado
-   */
-  const onStateChange = useCallback((callback: (state: ProviderState) => void) => {
-    const id = `state-callback-${Date.now()}-${Math.random()}`;
-    stateChangeCallbacks.current.set(id, callback);
-
-    return () => {
-      stateChangeCallbacks.current.delete(id);
-    };
-  }, []);
-
-  /**
-   * Broadcast estado a otras pestañas
-   */
-  const broadcastState = useCallback(() => {
-    broadcastChannel.broadcastSessionUpdate(state.activeSession);
-  }, [state.activeSession]);
-
-  /**
-   * Adquiere lock para control del timer
-   */
-  const acquireTabLock = useCallback((): boolean => {
-    if (!tabLockToken.current) {
-      tabLockToken.current = `lock-${Date.now()}-${Math.random()}`;
-      setState(prev => ({ ...prev, tabLockToken: tabLockToken.current }));
-      broadcastChannel.broadcastLockAcquired(tabLockToken.current!);
-      return true;
-    }
-    return false;
-  }, []);
-
-  /**
-   * Libera lock del timer
-   */
-  const releaseTabLock = useCallback(() => {
-    tabLockToken.current = null;
-    setState(prev => ({ ...prev, tabLockToken: null }));
-    broadcastChannel.broadcastLockReleased();
-  }, []);
-
-
-  /**
-   * Inicia sesión con cuenta regresiva
-   */
-  const startSessionWithCountdown = useCallback(async (_payload: SessionCreateDto) => {
-    // Mostrar cuenta regresiva
-    setState(prev => ({ ...prev, showCountdown: true }));
-  }, []);
-
-  /**
-   * Muestra la cuenta regresiva
-   */
-  const showCountdown = useCallback(() => {
-    setState(prev => ({ ...prev, showCountdown: true }));
-  }, []);
-
-  /**
-   * Oculta la cuenta regresiva
-   */
-  const hideCountdown = useCallback(() => {
-    setState(prev => ({ ...prev, showCountdown: false }));
-  }, []);
-
-  /**
-   * Verifica si hay una reanudación directa pendiente
-   */
-  const checkDirectResume = useCallback(() => {
-    const directResume = localStorage.getItem('focusup:directResume');
-    console.log('[PROVIDER] checkDirectResume called, directResume flag:', directResume);
-
-    if (directResume === 'true') {
-      console.log('[PROVIDER] Processing direct resume');
-
-      // Re-run initialization
-      try {
-        const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-        console.log('[PROVIDER] Stored session data:', stored ? JSON.parse(stored) : null);
-
-        if (stored) {
-          const parsed = JSON.parse(stored);
-
-          // Verificar expiración
-          if (isSessionExpired(parsed.persistedAt)) {
-            console.log('[PROVIDER] Sesión expirada, eliminando');
-            localStorage.removeItem(SESSION_STORAGE_KEY);
-            localStorage.removeItem('focusup:directResume');
-            return;
-          }
-
-          // Mapear sesión del servidor al cliente
-          const session = mapServerSession(parsed, parsed.persistedAt);
-          console.log('[PROVIDER] Mapped session:', session);
-          console.log('[PROVIDER] Session status before correction:', session.status, 'isRunning:', session.isRunning, 'elapsedMs:', session.elapsedMs);
-
-          // Para sesiones reanudadas, asegurar que startTime esté establecido correctamente
-          const sessionWithCorrectedTimer = session.isRunning ? {
-            ...session,
-            startTime: new Date().toISOString(), // Nuevo punto de referencia para continuar el timer
-          } : session;
-
-          console.log('[PROVIDER] Session with corrected timer:', sessionWithCorrectedTimer);
-          console.log('[PROVIDER] Final session status:', sessionWithCorrectedTimer.status, 'isRunning:', sessionWithCorrectedTimer.isRunning);
-
-          // Actualizar estado directamente sin mostrar modal
-          setState(prev => ({
-            ...prev,
-            activeSession: sessionWithCorrectedTimer,
-            isMinimized: true,
-            showContinueModal: false,
-          }));
-
-          console.log('[PROVIDER] State updated, session restored. Checking if session gets paused automatically...');
-
-          // Check if session is paused immediately after restore
-          setTimeout(() => {
-            console.log('[PROVIDER] Checking session status 1 second after restore:', state.activeSession?.status, 'isRunning:', state.activeSession?.isRunning);
-          }, 1000);
-
-          localStorage.removeItem('focusup:directResume');
-        } else {
-          console.log('[PROVIDER] No stored session data found');
-        }
-      } catch (error) {
-        console.error('[PROVIDER] Error en checkDirectResume:', error);
-        localStorage.removeItem('focusup:directResume');
-      }
+export const ConcentrationSessionProvider = ({ children }: any) => {
+  const [activeSession, setActiveSession] = useState<ConcentrationSession | null>(null);
+  const [remainingTime, setRemainingTime] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const appState = useRef(AppState.currentState);
+
+  /* -----------------------------------------------------------
+     Utilidades de almacenamiento móvil
+  ----------------------------------------------------------- */
+  const saveSessionToStorage = async (session: ConcentrationSession | null) => {
+    if (session) {
+      await AsyncStorage.setItem("activeSession", JSON.stringify(session));
     } else {
-      console.log('[PROVIDER] No direct resume pending');
+      await AsyncStorage.removeItem("activeSession");
     }
-  }, []);
-
-  // Notificar cambios de estado
-  useEffect(() => {
-    stateChangeCallbacks.current.forEach(callback => {
-      try {
-        callback(state);
-      } catch (error) {
-        console.error('Error en callback de cambio de estado:', error);
-      }
-    });
-  }, [state]);
-
-  // API del contexto
-  const contextValue: ConcentrationSessionContextType = {
-    startSession,
-    startSessionWithCountdown,
-    pauseSession,
-    resumeSession,
-    finishLater,
-    completeSession,
-    minimize,
-    maximize,
-    hideContinueModal,
-    showCountdown,
-    hideCountdown,
-    getState,
-    onMethodCompleted,
-    onStateChange,
-    broadcastState,
-    acquireTabLock,
-    releaseTabLock,
-    checkDirectResume,
   };
 
+  const loadSessionFromStorage = async () => {
+    const storedSession = await AsyncStorage.getItem("activeSession");
+    if (storedSession) {
+      const session = JSON.parse(storedSession) as ConcentrationSession;
+      setActiveSession(session);
+
+      const now = Date.now();
+      const elapsed = (now - session.startTime) / 1000;
+      const timeLeft = session.duration - elapsed;
+
+      setRemainingTime(timeLeft > 0 ? timeLeft : 0);
+
+      if (timeLeft > 0 && !session.isPaused) {
+        startTimer();
+      }
+    }
+  };
+
+  /* -----------------------------------------------------------
+     Timer para móvil (solo JS setInterval)
+  ----------------------------------------------------------- */
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    timerRef.current = setInterval(() => {
+      setRemainingTime((prev) => {
+        if (prev <= 1) {
+          endSession();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  /* -----------------------------------------------------------
+     MÉTODOS DEL PROVIDER
+  ----------------------------------------------------------- */
+
+  const startSession = async (methodId: string) => {
+    const sessionData: ConcentrationSession = {
+      sessionId: `${Date.now()}`,
+      methodId,
+      startTime: Date.now(),
+      duration: 25 * 60, // 25 min default
+      isPaused: false,
+    };
+
+    setActiveSession(sessionData);
+    setRemainingTime(sessionData.duration);
+    await saveSessionToStorage(sessionData);
+
+    startTimer();
+  };
+
+  const pauseSession = async (reason?: string) => {
+    if (!activeSession) return;
+
+    stopTimer();
+
+    const updated = { ...activeSession, isPaused: true, reason };
+    setActiveSession(updated);
+    await saveSessionToStorage(updated);
+  };
+
+  const resumeSession = async () => {
+    if (!activeSession) return;
+
+    const updated = { ...activeSession, isPaused: false, reason: undefined };
+    setActiveSession(updated);
+    await saveSessionToStorage(updated);
+
+    startTimer();
+  };
+
+  const endSession = async () => {
+    stopTimer();
+    setActiveSession(null);
+    setRemainingTime(0);
+    await saveSessionToStorage(null);
+
+    // Enviar reporte opcional
+    try {
+      await axios.post(`${API_BASE_URL}/sessions/end`, {
+        sessionId: activeSession?.sessionId,
+        methodId: activeSession?.methodId,
+        completed: true,
+      });
+    } catch (e) {
+      console.log("Error enviando fin de sesión:", e);
+    }
+  };
+
+  /* -----------------------------------------------------------
+     Manejo de AppState (solo móvil)
+  ----------------------------------------------------------- */
+  useEffect(() => {
+    loadSessionFromStorage();
+
+    const sub = AppState.addEventListener("change", (next) => {
+      if (appState.current.match(/inactive|background/) && next === "active") {
+        loadSessionFromStorage();
+      }
+      appState.current = next;
+    });
+
+    return () => sub.remove();
+  }, []);
+
   return (
-    <ConcentrationSessionContext.Provider value={contextValue}>
+    <ConcentrationSessionContext.Provider
+      value={{
+        activeSession,
+        isActive: !!activeSession,
+        isPaused: activeSession?.isPaused ?? false,
+        remainingTime,
+        startSession,
+        pauseSession,
+        resumeSession,
+        endSession,
+      }}
+    >
       {children}
     </ConcentrationSessionContext.Provider>
   );
 };
-
-/**
- * Hook para usar el contexto de sesiones de concentración
- */
-export const useConcentrationSession = () => {
-  const context = useContext(ConcentrationSessionContext);
-  if (context === undefined) {
-    throw new Error('useConcentrationSession must be used within a ConcentrationSessionProvider');
-  }
-  return context;
-};
-
-export default ConcentrationSessionProvider;

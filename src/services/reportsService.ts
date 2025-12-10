@@ -1,68 +1,103 @@
 /**
- * Servicio de API para operaciones de reportes de sesiones y métodos
- *
- * Este módulo proporciona funciones para obtener reportes de sesiones de concentración
- * y métodos de estudio desde los nuevos endpoints separados. Maneja el mapeo
- * de campos snake_case del backend a camelCase del frontend.
- *
- * Incluye validación de respuestas y manejo de errores consistente.
+ * Servicio de API para operaciones de reportes de sesiones y métodos - Versión móvil
+ * Adaptado para React Native/Expo con AsyncStorage
  */
 
-import { apiClient } from '../clientes/apiClient';
-import { API_ENDPOINTS } from '../utils/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 import type { SessionReport, MethodReport } from '../types/api';
 
-/**
- * Servicio principal para operaciones de reportes
- */
+/* ---------------------------------------------------------
+   Utilidades internas
+--------------------------------------------------------- */
+
+// Obtener token desde AsyncStorage
+const getAuthToken = async (): Promise<string> => {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) throw new Error('No authentication token found');
+  return token;
+};
+
+// Wrapper de fetch con manejo de errores
+const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      // Si el token expiró, se elimina de AsyncStorage
+      if (response.status === 401) {
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('userId');
+        throw new Error('Authentication expired. Please login again.');
+      }
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API Request error:', error);
+    throw error;
+  }
+};
+
+/* ---------------------------------------------------------
+   Servicio principal
+--------------------------------------------------------- */
+
 class ReportsService {
-  /**
-   * Obtiene reportes de sesiones de concentración del usuario
-   *
-   * @returns Array de reportes de sesiones mapeados a camelCase
-   */
+  /* -----------------------------
+     Obtener reportes de sesiones
+  ----------------------------- */
   async getSessionReports(): Promise<SessionReport[]> {
     try {
-      console.log('[REPORTS] Obteniendo reportes de sesiones desde:', API_ENDPOINTS.SESSION_PROGRESS);
-      const response = await apiClient.get(API_ENDPOINTS.SESSION_PROGRESS);
+      console.log('[REPORTS] Obteniendo reportes de sesiones desde:', `${API_BASE_URL}${API_ENDPOINTS.SESSION_PROGRESS}`);
 
-      // Determinar la estructura de la respuesta
+      const responseData = await makeRequest(API_ENDPOINTS.SESSION_PROGRESS, { method: 'GET' });
+
       let reportsArray: any[] = [];
 
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        // Estructura: {success: true, data: [...]}
-        reportsArray = response.data.data;
-      } else if (response.data && Array.isArray(response.data)) {
-        // Estructura: [...] (array directo)
-        reportsArray = response.data;
+      if (responseData?.data && Array.isArray(responseData.data)) {
+        reportsArray = responseData.data;
+      } else if (Array.isArray(responseData)) {
+        reportsArray = responseData;
       } else {
-        console.warn('Estructura de respuesta inesperada para sesiones:', response.data);
+        console.warn('Estructura inesperada para sesiones:', responseData);
         return [];
       }
 
-      // Mapear campos snake_case a camelCase
+      // Mapear snake_case → camelCase
       const mappedReports: SessionReport[] = reportsArray.map((report: any) => ({
         idReporte: report.id_reporte,
         idSesion: report.id_sesion,
         idUsuario: report.id_usuario,
         nombreSesion: report.nombre_sesion,
         descripcion: report.descripcion,
-        // FIX: Standardize status from backend's 'completada' to frontend's expected 'completado'.
-        // CORRECCIÓN: Estandarizar el estado 'completada' del backend a 'completado' para consistencia con la UI.
         estado: report.estado === 'completada' ? 'completado' : report.estado,
         tiempoTotal: report.tiempo_total,
-        metodoAsociado: report.metodo_asociado ? {
-          idMetodo: report.metodo_asociado.id_metodo,
-          nombreMetodo: report.metodo_asociado.nombre_metodo
-        } : undefined,
-        albumAsociado: report.album_asociado ? {
-          idAlbum: report.album_asociado.id_album,
-          nombreAlbum: report.album_asociado.nombre_album
-        } : undefined,
-        fechaCreacion: report.fecha_creacion
+        metodoAsociado: report.metodo_asociado
+          ? {
+              idMetodo: report.metodo_asociado.id_metodo,
+              nombreMetodo: report.metodo_asociado.nombre_metodo,
+            }
+          : undefined,
+        albumAsociado: report.album_asociado
+          ? {
+              idAlbum: report.album_asociado.id_album,
+              nombreAlbum: report.album_asociado.nombre_album,
+            }
+          : undefined,
+        fechaCreacion: report.fecha_creacion,
       }));
 
-      console.log('Reportes de sesiones obtenidos exitosamente:', mappedReports.length);
       return mappedReports;
     } catch (error) {
       console.error('Error obteniendo reportes de sesiones:', error);
@@ -70,31 +105,26 @@ class ReportsService {
     }
   }
 
-  /**
-   * Obtiene reportes de métodos de estudio del usuario
-   *
-   * @returns Array de reportes de métodos mapeados a camelCase
-   */
+  /* -----------------------------
+     Obtener reportes de métodos
+  ----------------------------- */
   async getMethodReports(): Promise<MethodReport[]> {
     try {
-      console.log('Obteniendo reportes de métodos desde:', API_ENDPOINTS.METHOD_PROGRESS);
-      const response = await apiClient.get(API_ENDPOINTS.METHOD_PROGRESS);
+      console.log('[REPORTS] Obteniendo reportes de métodos desde:', `${API_BASE_URL}${API_ENDPOINTS.METHOD_PROGRESS}`);
 
-      // Determinar la estructura de la respuesta
+      const responseData = await makeRequest(API_ENDPOINTS.METHOD_PROGRESS, { method: 'GET' });
+
       let reportsArray: any[] = [];
 
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        // Estructura: {success: true, data: [...]}
-        reportsArray = response.data.data;
-      } else if (response.data && Array.isArray(response.data)) {
-        // Estructura: [...] (array directo)
-        reportsArray = response.data;
+      if (responseData?.data && Array.isArray(responseData.data)) {
+        reportsArray = responseData.data;
+      } else if (Array.isArray(responseData)) {
+        reportsArray = responseData;
       } else {
-        console.warn('Estructura de respuesta inesperada para métodos:', response.data);
+        console.warn('Estructura inesperada para métodos:', responseData);
         return [];
       }
 
-      // Mapear campos snake_case a camelCase
       const mappedReports: MethodReport[] = reportsArray.map((report: any) => ({
         idReporte: report.id_reporte,
         idMetodo: report.id_metodo,
@@ -102,19 +132,54 @@ class ReportsService {
         nombreMetodo: report.nombre_metodo,
         progreso: report.progreso,
         estado: report.estado,
-        fechaCreacion: report.fecha_creacion
+        fechaCreacion: report.fecha_creacion,
       }));
 
-      console.log('Reportes de métodos obtenidos exitosamente:', mappedReports.length);
       return mappedReports;
     } catch (error) {
       console.error('Error obteniendo reportes de métodos:', error);
       throw error;
     }
   }
+
+  /* -----------------------------
+     Eliminar reporte
+  ----------------------------- */
+  async deleteReport(reportId: number): Promise<void> {
+    try {
+      console.log('Eliminando reporte:', reportId);
+
+      await makeRequest(`${API_ENDPOINTS.REPORTS}/${reportId}`, {
+        method: 'DELETE',
+      });
+
+      console.log('Reporte eliminado');
+    } catch (error) {
+      console.error('Error eliminando reporte:', error);
+      throw error;
+    }
+  }
+
+  /* -----------------------------
+     Obtener estadísticas
+  ----------------------------- */
+  async getReportsStats(): Promise<any> {
+    try {
+      console.log('Obteniendo estadísticas');
+
+      const responseData = await makeRequest(API_ENDPOINTS.METHOD_PROGRESS, {
+        method: 'GET',
+      });
+
+      return responseData;
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      throw error;
+    }
+  }
 }
 
-// Instancia singleton del servicio
+/* Exportar instancia única */
 const reportsServiceInstance = new ReportsService();
 
 export { reportsServiceInstance as reportsService };
