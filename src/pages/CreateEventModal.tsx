@@ -37,9 +37,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     descripcionEvento: '',
     tipoEvento: 'concentracion' as 'normal' | 'concentracion',
     metodoSeleccionado: null as number | null,
+    albumSeleccionado: null as number | null,
   });
 
   const [isMethodsExpanded, setIsMethodsExpanded] = useState(false);
+  const [isAlbumsExpanded, setIsAlbumsExpanded] = useState(false);
 
   // Lista de métodos disponibles
   const metodosDisponibles = [
@@ -49,6 +51,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     { id: 4, nombre: 'Repaso Espaciado', descripcion: 'Memorización inteligente', icono: TrendingUp, color: '#F59E0B' },
     { id: 5, nombre: 'Método Cornell', descripcion: 'Notas estructuradas', icono: BookOpen, color: '#3B82F6' },
     { id: 6, nombre: 'Práctica Activa', descripcion: 'Aprendizaje práctico', icono: Target, color: '#EC4899' },
+  ];
+
+  // Lista de álbumes disponibles
+  const albumesDisponibles = [
+    { id: 1, nombre: 'Lo-Fi Study Beats', descripcion: 'Música relajante para concentración', icono: '🎵', color: '#8B5CF6' },
+    { id: 2, nombre: 'Pianos Calm', descripcion: 'Pianos suaves y melódicos', icono: '🎹', color: '#10B981' },
+    { id: 3, nombre: 'Nature Sounds', descripcion: 'Sonidos de la naturaleza', icono: '🌿', color: '#06B6D4' },
+    { id: 4, nombre: 'Classical Focus', descripcion: 'Música clásica instrumental', icono: '🎼', color: '#F59E0B' },
+    { id: 5, nombre: 'Ambient Study', descripcion: 'Sonidos ambientales para estudio', icono: '🌊', color: '#3B82F6' },
+    { id: 6, nombre: 'Jazz Concentration', descripcion: 'Jazz suave para foco', icono: '🎷', color: '#EC4899' },
   ];
 
   const [loading, setLoading] = useState(false);
@@ -65,6 +77,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         descripcionEvento: '',
         tipoEvento: 'concentracion',
         metodoSeleccionado: null,
+        albumSeleccionado: null,
       });
       setIsMethodsExpanded(false);
       setErrors({});
@@ -165,6 +178,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         descripcionEvento: formData.descripcionEvento.trim() || undefined,
         tipoEvento: formData.tipoEvento,
         metodosSeleccionados: formData.metodoSeleccionado ? [formData.metodoSeleccionado] : undefined,
+        albumSeleccionado: formData.albumSeleccionado || undefined,
       };
 
       await onSave(eventData);
@@ -436,7 +450,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             <View style={styles.methodRadio}>
                               <View style={[
                                 styles.radio,
-                                isSelected && styles.radioSelected
+                                isSelected && styles.radioSelectedMethod
                               ]}>
                                 {isSelected && <View style={styles.radioDot} />}
                               </View>
@@ -467,6 +481,78 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
                     <Text style={styles.selectionHint}>
                       Selecciona un método para crear un evento automáticamente
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Albums Selection - Collapsible */}
+              <View style={styles.methodsSection}>
+                <TouchableOpacity
+                  style={styles.collapsibleHeader}
+                  onPress={() => setIsAlbumsExpanded(!isAlbumsExpanded)}
+                >
+                  <Text style={styles.label}>
+                    Álbumes de Música
+                  </Text>
+                  <Text style={[styles.expandIcon, isAlbumsExpanded && styles.expandedIcon]}>
+                    ▼
+                  </Text>
+                </TouchableOpacity>
+
+                {isAlbumsExpanded && (
+                  <View style={styles.collapsibleContent}>
+                    <Text style={styles.methodsQuestion}>
+                      ¿Qué álbum quieres para tu sesión?
+                    </Text>
+
+                    <View style={styles.methodsGrid}>
+                      {albumesDisponibles.map((album) => {
+                        const isSelected = formData.albumSeleccionado === album.id;
+
+                        return (
+                          <TouchableOpacity
+                            key={album.id}
+                            style={[
+                              styles.methodOption,
+                              isSelected && styles.methodOptionSelected
+                            ]}
+                            onPress={() => setFormData(prev => ({ ...prev, albumSeleccionado: album.id }))}
+                          >
+                            <View style={styles.methodRadio}>
+                              <View style={[
+                                styles.radio,
+                                isSelected && styles.radioSelectedMethod
+                              ]}>
+                                {isSelected && <View style={styles.radioDot} />}
+                              </View>
+                            </View>
+
+                            <View style={[styles.methodIcon, { backgroundColor: `${album.color}20` }]}>
+                              <Text style={[styles.iconEmoji, { backgroundColor: "transparent" }]}>{album.icono}</Text>
+                            </View>
+
+                            <View style={styles.methodInfo}>
+                              <Text style={[styles.methodName, isSelected && styles.methodNameSelected]} numberOfLines={2}>
+                                {album.nombre}
+                              </Text>
+                              <Text style={[styles.methodDesc, isSelected && styles.methodDescSelected]} numberOfLines={2}>
+                                {album.descripcion}
+                              </Text>
+                            </View>
+
+                            {isSelected && (
+                              <View style={styles.selectedBadge}>
+                                <Text style={styles.selectedText}>Seleccionado</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <Text style={styles.selectionHint}>
+                      Selecciona un álbum para añadir música a tu evento
                     </Text>
                   </View>
                 )}
@@ -842,7 +928,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#10b981',
     transform: [{ rotate: '0deg' }],
-    transition: 'all 0.3s ease',
   },
   expandedIcon: {
     transform: [{ rotate: '180deg' }],
@@ -888,7 +973,7 @@ const styles = StyleSheet.create({
     shadowRadius: 1,
     elevation: 1,
   },
-  radioSelected: {
+  radioSelectedMethod: {
     borderColor: '#10b981',
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     shadowColor: '#10b981',
