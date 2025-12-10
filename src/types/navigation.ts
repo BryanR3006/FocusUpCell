@@ -25,5 +25,11 @@ export type RootStackParamList = {
   MusicAlbums: undefined;
   MusicSongs: { albumId: number; albumName?: string };
   QuickSession: undefined;
-  
+  ActiveRecallSteps: { methodId: number };
+  SpacedRepetitionSteps: { methodId: number };
+  FeynmanSteps: { methodId: number };
+  CornellSteps: { methodId: number };
+  MindMapsSteps: { methodId: number };
+  Events: undefined;
+  sessions: undefined;
 };

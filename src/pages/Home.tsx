@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../ui/Sidebar';
 import { API_ENDPOINTS } from '../utils/constants';
 import { apiClient } from '../clientes/apiClient';
+import { ApiResponse, StudyMethod as ApiStudyMethod, MethodReport, SessionReport } from '../types/api';
 import {
   BookOpen,
   Calendar,
@@ -417,19 +418,19 @@ const Home: React.FC = () => {
   };
 
   // ===== FUNCIONES DE API =====
-  const fetchStudyMethods = async () => {
+  const fetchStudyMethods = async (): Promise<StudyMethod[]> => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.STUDY_METHODS);
       const methods = extractDataFromResponse(response);
-      
+
       // Obtener también los métodos activos del usuario
       const activeMethodsResponse = await apiClient.get(API_ENDPOINTS.USER_METHODS_REPORTS);
-      const activeMethods = extractDataFromResponse(activeMethodsResponse);
-      
+      const activeMethods = extractDataFromResponse(activeMethodsResponse) as MethodReport[];
+
       return methods.map((method: any, index: number) => {
-        const activeMethod = activeMethods.find((am: any) => am.metodo_id === method.id);
+        const activeMethod = activeMethods.find((am: MethodReport) => am.idMetodo === method.id);
         const progreso = activeMethod?.progreso || 0;
-        
+
         return {
           id: method.id,
           titulo: method.nombre || method.titulo || 'Método sin nombre',
@@ -437,11 +438,11 @@ const Home: React.FC = () => {
           icono: method.icono || 'book-open',
           color: method.color || getMethodColor(index, Number(method.id)),
           progreso: progreso,
-          estado: progreso === 100 ? 'completado' : 
+          estado: progreso === 100 ? 'completado' :
                  progreso > 0 ? 'activo' : 'pausado',
           duracion_recomendada: method.duracion_recomendada,
           dificultad: method.dificultad,
-        };
+        } as StudyMethod;
       });
     } catch (error) {
       console.error('Error fetching study methods:', error);
@@ -540,7 +541,7 @@ const Home: React.FC = () => {
     }
   };
 
-  const fetchUserProgress = async () => {
+  const fetchUserProgress = async (): Promise<UserProgress | null> => {
     try {
       // Obtener estadísticas del usuario
       const [methodsResponse, sessionsResponse, musicResponse, eventsResponse] = await Promise.all([
@@ -550,38 +551,35 @@ const Home: React.FC = () => {
         apiClient.get(API_ENDPOINTS.EVENTS),
       ]);
 
-      const userMethods = extractDataFromResponse(methodsResponse);
-      const userSessions = extractDataFromResponse(sessionsResponse);
+      const userMethods = extractDataFromResponse(methodsResponse) as MethodReport[];
+      const userSessions = extractDataFromResponse(sessionsResponse) as SessionReport[];
       const userMusic = extractDataFromResponse(musicResponse);
       const userEvents = extractDataFromResponse(eventsResponse);
 
       // Calcular estadísticas
-      const completedMethods = userMethods.filter((m: any) => m.progreso === 100).length;
-      const activeMethods = userMethods.filter((m: any) => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
+      const completedMethods = userMethods.filter((m: MethodReport) => m.progreso === 100).length;
+      const activeMethods = userMethods.filter((m: MethodReport) => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
       const pendingEvents = userEvents.filter((e: any) => e.estado === 'pendiente' || e.status === 'pending').length;
-      
+
       // Calcular tiempo total de estudio (en segundos)
       const totalStudyTime = userSessions
-        .filter((s: any) => s.estado === 'completada' || s.status === 'completed')
-        .reduce((total: number, session: any) => total + (session.duracion_minutos || session.duration_minutes || 0) * 60, 0);
+        .filter((s: SessionReport) => s.estado === 'completado')
+        .reduce((total: number, session: SessionReport) => total + (session.tiempoTotal || 0) * 60, 0);
 
-      // Calcular concentración promedio
-      const sessionsWithConcentration = userSessions.filter((s: any) => s.concentracion);
-      const averageConcentration = sessionsWithConcentration.length > 0
-        ? sessionsWithConcentration.reduce((sum: number, session: any) => sum + (session.concentracion || 0), 0) / sessionsWithConcentration.length
-        : 75;
+      // Calcular concentración promedio - no disponible en SessionReport, usar valor por defecto
+      const averageConcentration = 75;
 
       // Calcular racha (días seguidos estudiando) - Esto necesitaría un cálculo más complejo
       // Por ahora, lo calculamos basado en sesiones en los últimos 7 días
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const recentSessions = userSessions.filter((s: any) => {
-        const sessionDate = new Date(s.fecha_inicio || s.created_at);
+      const recentSessions = userSessions.filter((s: SessionReport) => {
+        const sessionDate = new Date(s.fechaCreacion);
         return sessionDate > weekAgo;
       });
       const uniqueDays = new Set(
-        recentSessions.map((s: any) => {
-          const date = new Date(s.fecha_inicio || s.created_at);
+        recentSessions.map((s: SessionReport) => {
+          const date = new Date(s.fechaCreacion);
           return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         })
       );
@@ -824,7 +822,7 @@ const Home: React.FC = () => {
       const targetScreen = screenMap[screen] || screen;
       
       if (navigation && typeof navigation.navigate === 'function') {
-        navigation.navigate(targetScreen as never, params as never);
+        navigation.navigate(targetScreen as never);
       }
     } catch (err) {
       console.warn(`Error navegando a ${screen}:`, err);
@@ -923,8 +921,7 @@ const Home: React.FC = () => {
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>EstudioFocus</Text>
-          <Text style={styles.headerSubtitle}>Dashboard</Text>
+          <Text style={styles.headerTitle}>Focus Up</Text>
         </View>
         
         <TouchableOpacity 
@@ -968,13 +965,16 @@ const Home: React.FC = () => {
               Tu progreso de estudio hoy
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.quickStartButton}
-            onPress={() => navigateTo('Session')}
-          >
-            <Zap size={18} color="#fff" />
-            <Text style={styles.quickStartText}>Inicio Rápido</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity
+              style={styles.quickStartButton}
+              onPress={() => navigateTo('sessions')}
+            >
+              <Zap size={18} color="#fff" />
+              <Text style={styles.quickStartText}>Sesiones</Text>
+            </TouchableOpacity>
+          
+          </View>
         </View>
 
         <View style={styles.statsGrid}>
@@ -1468,6 +1468,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickStartText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sessionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  sessionsButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,

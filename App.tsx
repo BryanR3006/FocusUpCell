@@ -20,7 +20,7 @@ import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
 import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
 import ProfileScreen from "./src/pages/profilpage";
 
-// Desde Features/Erickson
+// Desde Features/EricksonS
 import { MusicAlbums } from "./src/pages/MusicAlbums";
 import { MusicSongs } from "./src/pages/MusicSongs";
 
@@ -36,6 +36,7 @@ import CornellStepsView from "./src/pages/CornellStepsView";
 import MindMapsIntroView from "./src/pages/MindMapsInfoPage";
 import MindMapsStepsView from "./src/pages/MindMapsStepsPage";
 import EventsPage from "./src/pages/EventsPage";
+import { StartSession } from "./src/pages/sessions/StartSession";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -94,7 +95,10 @@ export default function App() {
 
             {/* Página de Eventos */}
             <Stack.Screen name="Events" component={EventsPage} />
-          </Stack.Navigator>
+
+            {/* Sesion de concentracion */}
+             <Stack.Screen name="sessions" component={StartSession} /> 
+         </Stack.Navigator>
         </NavigationContainer>
         <CompactMusicPlayer />
       </AudioProvider>
