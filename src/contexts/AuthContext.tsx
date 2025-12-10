@@ -25,18 +25,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('userData');
       
-      console.log('Token:', token);
-      console.log('UserData:', userData);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      console.log('UserData:', userData ? 'Present' : 'Missing');
       
       if (token && userData) {
         try {
           const parsedUserData = JSON.parse(userData);
           setIsAuthenticated(true);
           setUser(parsedUserData);
+          
+          // ✅ IMPORTANTE: Verifica si userId existe y guárdalo por separado
+          if (parsedUserData && parsedUserData.id_usuario) {
+            const existingUserId = await AsyncStorage.getItem('userId');
+            if (!existingUserId) {
+              await AsyncStorage.setItem('userId', parsedUserData.id_usuario.toString());
+              console.log('UserID guardado en checkAuth:', parsedUserData.id_usuario.toString());
+            }
+          }
         } catch (parseError) {
           console.error('Error parsing user data:', parseError);
-          // Si hay error al parsear, limpiar los datos corruptos
           await AsyncStorage.removeItem('userData');
+          await AsyncStorage.removeItem('userId'); // Limpia también userId
         }
       } else {
         setIsAuthenticated(false);
@@ -53,8 +62,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (token: string, userData: any) => {
     try {
+      // ✅ GUARDA LOS 3 ITEMS IGUAL QUE EN WEB
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      
+      // ✅ ESTA ES LA LÍNEA QUE FALTA:
+      if (userData && userData.id_usuario) {
+        await AsyncStorage.setItem('userId', userData.id_usuario.toString());
+        console.log('UserID guardado en login:', userData.id_usuario.toString());
+      }
+      
       setIsAuthenticated(true);
       setUser(userData);
     } catch (error) {
@@ -65,8 +82,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      // ✅ LIMPIA LOS 3 ITEMS
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('userData');
+      await AsyncStorage.removeItem('userId'); // Limpia también userId
+      
       setIsAuthenticated(false);
       setUser(null);
     } catch (error) {
@@ -97,4 +117,5 @@ export const useAuth = () => {
   }
   return context;
 };
-export default AuthContext
+
+export default AuthContext;

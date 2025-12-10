@@ -97,6 +97,30 @@ export interface Song {
   duracion?: number; // En segundos
 }
 
+// Tipos del módulo de notificaciones
+export interface NotificationSettings {
+  idUsuario?: number;
+  eventos: boolean;
+  metodosPendientes: boolean;
+  sesionesPendientes: boolean;
+  motivacion: boolean;
+}
+
+export interface UpcomingNotification {
+  id: number;
+  titulo: string;
+  tipo: 'evento' | 'metodo' | 'sesion' | 'motivacion';
+  fecha_hora: string; // ISO string
+  id_metodo?: number;
+  id_album?: number;
+  descripcion?: string;
+}
+
+export interface NotificationConfigUpdate {
+  tipo: keyof NotificationSettings;
+  enabled: boolean;
+}
+
 // Common DTOs (placeholders - extend as needed)
 export interface PaginatedResponse<T> {
   data: T[];

@@ -23,6 +23,7 @@ import ProfileScreen from "./src/pages/profilpage";
 // Desde Features/Erickson
 import { MusicAlbums } from "./src/pages/MusicAlbums";
 import { MusicSongs } from "./src/pages/MusicSongs";
+import Notifications from "./src/pages/Notifications";
 
 // Desde develop: vistas de métodos de estudio y Events
 import ActiveRecallIntroView from "./src/pages/ActiveRecallIntroView";
@@ -63,6 +64,7 @@ export default function App() {
             <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
             <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Notifications" component={Notifications} />
 
             {/* Método Pomodoro */}
             <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />

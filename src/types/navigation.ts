@@ -5,6 +5,7 @@ export type RootStackParamList = {
   RegisterStep2: { password: string };
   Confirmation: undefined;
   Survey: undefined;
+  Notifications: undefined;
   ForgotPassword: undefined;
   ForgotPasswordCode: undefined;
   ForgotPasswordReset: undefined;

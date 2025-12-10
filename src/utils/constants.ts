@@ -71,7 +71,7 @@ export const API_ENDPOINTS = {
   // ---------------------------
   // NOTIFICACIONES
   // ---------------------------
-  NOTIFICATIONS_PREFERENCES: "/notificaciones/preferencias/:idUsuario",
+  NOTIFICATIONS_PREFERENCES: "/notificaciones/preferencias",
   NOTIFICATIONS_SCHEDULED: "/notificaciones/programadas",
 
   // ---------------------------
