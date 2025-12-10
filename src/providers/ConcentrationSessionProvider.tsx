@@ -22,6 +22,7 @@ interface ConcentrationSessionContextType {
   pauseSession: (reason?: string) => Promise<void>;
   resumeSession: () => Promise<void>;
   endSession: () => Promise<void>;
+  checkDirectResume: () => Promise<void>;
 }
 
 export const ConcentrationSessionContext =
@@ -34,7 +35,16 @@ export const ConcentrationSessionContext =
     pauseSession: async () => {},
     resumeSession: async () => {},
     endSession: async () => {},
+    checkDirectResume: async () => {},
   });
+
+export const useConcentrationSession = () => {
+  const context = React.useContext(ConcentrationSessionContext);
+  if (!context) {
+    throw new Error('useConcentrationSession must be used within a ConcentrationSessionProvider');
+  }
+  return context;
+};
 
 export const ConcentrationSessionProvider = ({ children }: any) => {
   const [activeSession, setActiveSession] = useState<ConcentrationSession | null>(null);
@@ -150,6 +160,14 @@ export const ConcentrationSessionProvider = ({ children }: any) => {
     }
   };
 
+  const checkDirectResume = async () => {
+    const directResume = await AsyncStorage.getItem('focusup:directResume');
+    if (directResume === 'true') {
+      await AsyncStorage.removeItem('focusup:directResume');
+      // Aquí puedes agregar lógica adicional para reanudar la sesión si es necesario
+    }
+  };
+
   /* -----------------------------------------------------------
      Manejo de AppState (solo móvil)
   ----------------------------------------------------------- */
@@ -177,6 +195,7 @@ export const ConcentrationSessionProvider = ({ children }: any) => {
         pauseSession,
         resumeSession,
         endSession,
+        checkDirectResume,
       }}
     >
       {children}
