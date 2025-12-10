@@ -82,15 +82,15 @@ export const EventsPage: React.FC = () => {
   };
 
   const handleToggleEventState = async (event: IEvento) => {
-    const eventId = event.id || event.id;
+    const eventId = event.id_evento || event.idEvento;
     if (!eventId) return;
 
-    const currentStatus = event.estado || event.estado;
+    const currentStatus = event.estado || event.estado_evento;
     const newStatus = currentStatus === "completado" ? "pendiente" : "completado";
 
     const previousEvents = [...events];
     setEvents(prev => prev.map(e =>
-      (e.id || e.id) === eventId
+      (e.id_evento || e.idEvento) === eventId
         ? { ...e, estado: newStatus }
         : e
     ));
@@ -118,8 +118,8 @@ export const EventsPage: React.FC = () => {
     if (filter === 'all') return events;
 
     return events.filter(event => {
-      const fecha = event.fechaEvento || event.fechaEvento;
-      const hora = event.horaEvento || event.horaEvento;
+      const fecha = event.fecha_evento || event.fechaEvento;
+      const hora = event.hora_evento || event.horaEvento;
 
       let isPast = false;
       if (fecha && hora) {
@@ -137,7 +137,7 @@ export const EventsPage: React.FC = () => {
 
       if (!isPast) return false;
 
-      const status = event.estado || event.estado;
+      const status = event.estado || event.estado_evento;
 
       if (filter === 'completed') {
         return status === 'completado';
@@ -308,12 +308,12 @@ export const EventsPage: React.FC = () => {
               <FlatList
                 data={getFilteredEvents().filter(event => 
                   event && typeof event === 'object' &&
-                  (event.id || event.id) &&
-                  (event.nombreEvento || event.nombreEvento)
+                  (event.id_evento || event.idEvento) &&
+                  (event.nombre_evento || event.nombreEvento)
                 )}
                 renderItem={renderEventItem}
                 keyExtractor={(item) => 
-                  `event-${item.id || item.id}`
+                  `event-${item.id_evento || item.idEvento}`
                 }
                 numColumns={width < 768 ? 1 : width < 1024 ? 2 : 3}
                 scrollEnabled={false}
@@ -478,7 +478,13 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#10b981',
     borderTopColor: 'transparent',
-    
+    animationKeyframes: {
+      '0%': { transform: [{ rotate: '0deg' }] },
+      '100%': { transform: [{ rotate: '360deg' }] },
+    },
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+    animationTimingFunction: 'linear',
   },
   loadingText: {
     fontSize: 20,

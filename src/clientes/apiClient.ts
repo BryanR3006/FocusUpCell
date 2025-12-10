@@ -3,12 +3,12 @@ import type { AxiosInstance, AxiosResponse } from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import type { ApiError } from "../types/api";
 
-import { API_ENDPOINTS } from "../utils/endpoints";
+import { API_ENDPOINTS } from "../utils/constants";
 import type {
   PaginatedResponse,
   StudyMethod,
   Benefit,
-} from "../types/api-responses";
+} from "../types/api";
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
