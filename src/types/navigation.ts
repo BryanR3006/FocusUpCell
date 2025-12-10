@@ -61,4 +61,5 @@ export type RootStackParamList = {
   QuickSession: undefined;
   Reports: undefined;
   Events: undefined;
+  sessions: undefined;
 };
