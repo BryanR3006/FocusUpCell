@@ -1,4 +1,3 @@
-// src/types/user.ts
 export interface User {
   id_usuario: number;
   nombre_usuario: string;
@@ -7,32 +6,21 @@ export interface User {
   genero?: string;
   fecha_nacimiento: Date;
   horario_fav?: string;
+  intereses?: number[];
+  distracciones?: number[];
+  objetivo?: number;
 }
 
-// CORRECCIÓN: Tu API espera "contrasena" no "password"
 export interface LoginRequest {
   correo: string;
-  contrasena: string; // ← CAMBIA "password" por "contrasena"
+  password: string;
 }
 
-export interface RegisterRequest {
+export interface RegisterRequest extends LoginRequest {
   nombre_usuario: string;
-  correo: string;
-  contrasena: string;
   fecha_nacimiento: Date;
   pais?: string;
   genero?: string;
-  horario_fav?: string;
-}
-
-export interface SurveyData {
-  sport: string;
-  experience: string;
-  age: number;
-}
-
-export interface ExtendedUserPayload extends RegisterRequest {
-  survey?: SurveyData;
 }
 
 export interface AuthResponse {
