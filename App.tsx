@@ -24,6 +24,8 @@ import ProfileScreen from "./src/pages/profilpage";
 import { MusicAlbums } from "./src/pages/MusicAlbums";
 import { MusicSongs } from "./src/pages/MusicSongs";
 import Notifications from "./src/pages/Notifications";
+import { ConcentrationSessionProvider } from "./src/providers/ConcentrationSessionProvider";
+import Reports from "./src/pages/Reports";
 
 // Desde develop: vistas de métodos de estudio y Events
 import ActiveRecallIntroView from "./src/pages/ActiveRecallIntroView";
@@ -45,58 +47,61 @@ export default function App() {
     <AuthProvider>
       <AudioProvider>
         <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: "#171717" },
-            }}
-          >
-            {/* Rutas principales */}
-            <Stack.Screen name="Login" component={Login} />
-            <Stack.Screen name="Home" component={Home} />
-            <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
-            <Stack.Screen name="Register" component={Register} />
-            <Stack.Screen name="RegisterStep2" component={RegisterStep2} />
-            <Stack.Screen name="Confirmation" component={Confirmation} />
-            <Stack.Screen name="Survey" component={SurveyPage} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-            <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
-            <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="Notifications" component={Notifications} />
+          <ConcentrationSessionProvider>
+            <Stack.Navigator
+              initialRouteName="Login"
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "#171717" },
+              }}
+            >
+              {/* Rutas principales */}
+              <Stack.Screen name="Login" component={Login} />
+              <Stack.Screen name="Home" component={Home} />
+              <Stack.Screen name="StudyMethods" component={StudyMethodsLibraryPage} />
+              <Stack.Screen name="Register" component={Register} />
+              <Stack.Screen name="RegisterStep2" component={RegisterStep2} />
+              <Stack.Screen name="Confirmation" component={Confirmation} />
+              <Stack.Screen name="Survey" component={SurveyPage} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+              <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCode} />
+              <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordReset} />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
+              <Stack.Screen name="Notifications" component={Notifications} />
+              <Stack.Screen name="Reports" component={Reports} />
 
-            {/* Método Pomodoro */}
-            <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
-            <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
+              {/* Método Pomodoro */}
+              <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
+              <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
 
-            {/* Música */}
-            <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
-            <Stack.Screen name="MusicSongs" component={MusicSongs} />
+              {/* Música */}
+              <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
+              <Stack.Screen name="MusicSongs" component={MusicSongs} />
 
-            {/* Método Active Recall (Práctica Activa) */}
-            <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
-            <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
+              {/* Método Active Recall (Práctica Activa) */}
+              <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
+              <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
 
-            {/* Método Spaced Repetition (Repetición Espaciada) */}
-            <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView} />
-            <Stack.Screen name="SpacedRepetitionSteps" component={SpacedRepetitionStepsView} />
+              {/* Método Spaced Repetition (Repetición Espaciada) */}
+              <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView} />
+              <Stack.Screen name="SpacedRepetitionSteps" component={SpacedRepetitionStepsView} />
 
-            {/* Método Feynman */}
-            <Stack.Screen name="FeynmanIntro" component={FeynmanIntroView} />
-            <Stack.Screen name="FeynmanSteps" component={FeynmanStepsView} />
+              {/* Método Feynman */}
+              <Stack.Screen name="FeynmanIntro" component={FeynmanIntroView} />
+              <Stack.Screen name="FeynmanSteps" component={FeynmanStepsView} />
 
-            {/* Método Cornell */}
-            <Stack.Screen name="CornellIntro" component={CornellIntroView} />
-            <Stack.Screen name="CornellSteps" component={CornellStepsView} />
+              {/* Método Cornell */}
+              <Stack.Screen name="CornellIntro" component={CornellIntroView} />
+              <Stack.Screen name="CornellSteps" component={CornellStepsView} />
 
-            {/* Método Mind Maps (Mapas Mentales) */}
-            <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView} />
-            <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
+              {/* Método Mind Maps (Mapas Mentales) */}
+              <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView} />
+              <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
 
-            {/* Página de Eventos */}
-            <Stack.Screen name="Events" component={EventsPage} />
-          </Stack.Navigator>
+              {/* Página de Eventos */}
+              <Stack.Screen name="Events" component={EventsPage} />
+            </Stack.Navigator>
+          </ConcentrationSessionProvider>
         </NavigationContainer>
         <CompactMusicPlayer />
       </AudioProvider>
