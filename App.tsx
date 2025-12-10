@@ -20,14 +20,14 @@ import PomodoroIntroScreen from "./src/pages/PomodoroIntroView";
 import PomodoroExecutionScreen from "./src/pages/PomodoroExecutionView";
 import ProfileScreen from "./src/pages/profilpage";
 
-// Desde Features/Erickson
+// Features/Erickson
 import { MusicAlbums } from "./src/pages/MusicAlbums";
 import { MusicSongs } from "./src/pages/MusicSongs";
 import Notifications from "./src/pages/Notifications";
 import { ConcentrationSessionProvider } from "./src/providers/ConcentrationSessionProvider";
 import Reports from "./src/pages/Reports";
 
-// Desde develop: vistas de métodos de estudio y Events
+// develop: métodos de estudio y Events
 import ActiveRecallIntroView from "./src/pages/ActiveRecallIntroView";
 import ActiveRecallStepsView from "./src/pages/ActiveRecallStepsView";
 import SpacedRepetitionIntroView from "./src/pages/SpacedRepetitionIntroView";
@@ -39,6 +39,7 @@ import CornellStepsView from "./src/pages/CornellStepsView";
 import MindMapsIntroView from "./src/pages/MindMapsInfoPage";
 import MindMapsStepsView from "./src/pages/MindMapsStepsPage";
 import EventsPage from "./src/pages/EventsPage";
+import { StartSession } from "./src/pages/sessions/StartSession";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -70,7 +71,7 @@ export default function App() {
               <Stack.Screen name="Notifications" component={Notifications} />
               <Stack.Screen name="Reports" component={Reports} />
 
-              {/* Método Pomodoro */}
+              {/* Pomodoro */}
               <Stack.Screen name="PomodoroIntro" component={PomodoroIntroScreen} />
               <Stack.Screen name="PomodoroExecute" component={PomodoroExecutionScreen} />
 
@@ -78,33 +79,38 @@ export default function App() {
               <Stack.Screen name="MusicAlbums" component={MusicAlbums} />
               <Stack.Screen name="MusicSongs" component={MusicSongs} />
 
-              {/* Método Active Recall (Práctica Activa) */}
+              {/* Active Recall */}
               <Stack.Screen name="ActiveRecallIntro" component={ActiveRecallIntroView} />
               <Stack.Screen name="ActiveRecallSteps" component={ActiveRecallStepsView} />
 
-              {/* Método Spaced Repetition (Repetición Espaciada) */}
+              {/* Spaced Repetition */}
               <Stack.Screen name="SpacedRepetitionIntro" component={SpacedRepetitionIntroView} />
               <Stack.Screen name="SpacedRepetitionSteps" component={SpacedRepetitionStepsView} />
 
-              {/* Método Feynman */}
+              {/* Feynman */}
               <Stack.Screen name="FeynmanIntro" component={FeynmanIntroView} />
               <Stack.Screen name="FeynmanSteps" component={FeynmanStepsView} />
 
-              {/* Método Cornell */}
+              {/* Cornell */}
               <Stack.Screen name="CornellIntro" component={CornellIntroView} />
               <Stack.Screen name="CornellSteps" component={CornellStepsView} />
 
-              {/* Método Mind Maps (Mapas Mentales) */}
+              {/* Mind Maps */}
               <Stack.Screen name="MindMapsIntro" component={MindMapsIntroView} />
               <Stack.Screen name="MindMapsSteps" component={MindMapsStepsView} />
 
-              {/* Página de Eventos */}
+              {/* Eventos (Unificado) */}
               <Stack.Screen name="Events" component={EventsPage} />
+
+              {/* Sesión de concentración (Brayitan) */}
+              <Stack.Screen name="sessions" component={StartSession} />
             </Stack.Navigator>
           </ConcentrationSessionProvider>
         </NavigationContainer>
+
         <CompactMusicPlayer />
       </AudioProvider>
     </AuthProvider>
   );
 }
+

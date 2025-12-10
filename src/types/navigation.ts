@@ -1,32 +1,39 @@
 export type RootStackParamList = {
+  // Auth
   Login: undefined;
-  Home: undefined;
   Register: undefined;
   RegisterStep2: { password: string };
   Confirmation: undefined;
+
+  // Home
+  Home: undefined;
   Survey: undefined;
   Notifications: undefined;
+
+  // Password Recovery
   ForgotPassword: undefined;
   ForgotPasswordCode: undefined;
   ForgotPasswordReset: undefined;
+
+  // Métodos de estudio
   StudyMethods: undefined;
-  
-  // Métodos Pomodoro
+
+  // Pomodoro
   PomodoroIntro: { methodId: number; method?: any };
   PomodoroExecute: {
     methodId: number;
     resumeProgress?: number;
     sessionId?: string;
   };
-  
-  // Métodos de estudio - Introducción
+
+  // Introducciones de métodos
   MindMapsIntro: { methodId: number };
   SpacedRepetitionIntro: { methodId: number };
   ActiveRecallIntro: { methodId: number };
   FeynmanIntro: { methodId: number };
   CornellIntro: { methodId: number };
-  
-  // Métodos de estudio - Pasos (ESTAS SON LAS QUE FALTAN)
+
+  // PASOS de métodos (versión correcta)
   MindMapsSteps: { 
     methodId: number;
     progreso?: number;
@@ -52,13 +59,21 @@ export type RootStackParamList = {
     progreso?: number;
     sessionId?: string;
   };
-  
-  // Pantallas existentes
+
+  // Pantalla general de pasos
   MethodSteps: { methodId: number };
+
+  // Módulo de perfil
   Profile: undefined;
+
+  // Música
   MusicAlbums: undefined;
   MusicSongs: { albumId: number; albumName?: string };
+
+  // Sesiones rápidas
   QuickSession: undefined;
+
+  // Reportes y Eventos
   Reports: undefined;
   Events: undefined;
 };
