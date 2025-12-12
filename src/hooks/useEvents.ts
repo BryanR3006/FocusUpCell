@@ -15,17 +15,22 @@ export const useEvents = () => {
    * Fetch all events for the current user
    */
   const fetchEvents = async () => {
+    console.log('🔄 Iniciando fetchEvents...');
     setLoading(true);
     setError(null);
     try {
       const data = await eventsApi.getAllEvents();
+      console.log('✅ Eventos obtenidos de API:', data);
+      console.log('📊 Cantidad de eventos:', data.length);
       setEvents(data);
     } catch (err) {
+      console.error('❌ Error en fetchEvents:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch events';
       setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
+      console.log('🏁 fetchEvents completado');
     }
   };
 
@@ -49,25 +54,44 @@ export const useEvents = () => {
   };
 
   /**
-   * Update an existing event
-   */
-  const updateEvent = async (eventId: number, updates: IEventoUpdate) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updatedEvent = await eventsApi.updateEvent(eventId, updates);
-      setEvents(prev => prev.map(event =>
-        event.id_evento === eventId ? updatedEvent : event
-      ));
-      return updatedEvent;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update event';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+    * Update an existing event (optimistic)
+    */
+   const updateEvent = async (eventId: number, updates: IEventoUpdate) => {
+     const previousEvents = [...events];
+     const optimisticEvent = events.find(e => e.idEvento === eventId);
+     if (!optimisticEvent) return;
+ 
+     // Optimistic update - merge updates into event
+     const updatedOptimistic = { ...optimisticEvent };
+     if (updates.nombreEvento) updatedOptimistic.nombreEvento = updates.nombreEvento;
+     if (updates.fechaEvento) updatedOptimistic.fechaEvento = updates.fechaEvento;
+     if (updates.horaEvento) updatedOptimistic.horaEvento = updates.horaEvento;
+     if (updates.descripcionEvento !== undefined) updatedOptimistic.descripcionEvento = updates.descripcionEvento;
+     if (updates.tipoEvento) updatedOptimistic.tipoEvento = updates.tipoEvento;
+     if (updates.estado !== undefined) updatedOptimistic.estado = updates.estado;
+ 
+     setEvents(prev => prev.map(event =>
+       event.idEvento === eventId ? updatedOptimistic : event
+     ));
+ 
+     setLoading(true);
+     setError(null);
+     try {
+       const updatedEvent = await eventsApi.updateEvent(eventId, updates);
+       setEvents(prev => prev.map(event =>
+         event.idEvento === eventId ? updatedEvent : event
+       ));
+       return updatedEvent;
+     } catch (err) {
+       // Rollback on error
+       setEvents(previousEvents);
+       const errorMessage = err instanceof Error ? err.message : 'Failed to update event';
+       setError(errorMessage);
+       throw err;
+     } finally {
+       setLoading(false);
+     }
+   };
 
   /**
    * Delete an event (non-optimistic)
@@ -77,7 +101,7 @@ export const useEvents = () => {
     setError(null);
     try {
       await eventsApi.deleteEvent(eventId);
-      setEvents(prev => prev.filter(event => event.id_evento !== eventId));
+      setEvents(prev => prev.filter(event => event.idEvento !== eventId));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete event';
       setError(errorMessage);
@@ -93,7 +117,7 @@ export const useEvents = () => {
    */
   const optimisticDelete = async (eventId: number) => {
     const previous = events; // backup for rollback
-    setEvents(prev => prev.filter(e => (e.idEvento ?? e.id_evento) !== eventId)); // optimistic UI update
+    setEvents(prev => prev.filter(e => e.idEvento !== eventId)); // optimistic UI update
 
     try {
       await eventsApi.deleteEvent(eventId);

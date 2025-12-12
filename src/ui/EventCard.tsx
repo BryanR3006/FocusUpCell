@@ -20,12 +20,12 @@ export const EventCard: React.FC<EventCardProps> = ({
   onDelete,
   onToggleState,
 }) => {
-  const eventId = event.id_evento || event.idEvento;
-  const eventName = event.nombre_evento || event.nombreEvento;
-  const fecha = event.fecha_evento || event.fechaEvento;
-  const hora = event.hora_evento || event.horaEvento;
-  const descripcion = event.descripcion_evento || event.descripcionEvento;
-  const status = event.estado || event.estado_evento;
+  const eventId = event.idEvento;
+  const eventName = event.nombreEvento;
+  const fecha = event.fechaEvento;
+  const hora = event.horaEvento;
+  const descripcion = event.descripcionEvento;
+  const status = event.estado;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -52,7 +52,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           <View style={styles.statusIndicator}>
             <View style={[
               styles.statusDot,
-              status === 'completado' ? styles.completedDot : styles.pendingDot,
+              status === 'completed' ? styles.completedDot : styles.pendingDot,
             ]} />
           </View>
           <Text style={styles.title} numberOfLines={1}>
@@ -64,8 +64,8 @@ export const EventCard: React.FC<EventCardProps> = ({
             onPress={() => onToggleState(event)}
             style={styles.actionButton}
           >
-            <Text style={{color: status === 'completado' ? '#10b981' : '#9ca3af', fontSize: 20}}>
-              {status === 'completado' ? '✓' : '○'}
+            <Text style={{color: status === 'completed' ? '#10b981' : '#9ca3af', fontSize: 20}}>
+              {status === 'completed' ? '✓' : '○'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -107,15 +107,15 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* Method and Album indicators */}
         <View style={styles.tags}>
-          {event.metodosSeleccionados && event.metodosSeleccionados.length > 0 && (
+          {event.metodo && (
             <View style={styles.tag}>
               <Text style={{color: '#60a5fa', fontSize: 12}}>📚</Text>
               <Text style={styles.tagText}>
-                {event.metodosSeleccionados.length} método{event.metodosSeleccionados.length > 1 ? 's' : ''}
+                {event.metodo.nombreMetodo}
               </Text>
             </View>
           )}
-          {event.albumSeleccionado && (
+          {event.album && (
             <View style={[styles.tag, styles.albumTag]}>
               <Text style={{color: '#a78bfa', fontSize: 12}}>🎵</Text>
               <Text style={styles.tagText}>Música</Text>
@@ -128,9 +128,9 @@ export const EventCard: React.FC<EventCardProps> = ({
       <View style={styles.footer}>
         <Text style={[
           styles.statusText,
-          status === 'completado' ? styles.completedText : styles.pendingText,
+          status === 'completed' ? styles.completedText : styles.pendingText,
         ]}>
-          {status === 'completado' ? 'Completado' : 'Pendiente'}
+          {status === 'completed' ? 'Completado' : 'Pendiente'}
         </Text>
       </View>
     </View>

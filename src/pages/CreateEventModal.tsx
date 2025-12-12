@@ -7,14 +7,13 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Platform,
   Alert,
-  FlatList,
   Image,
 } from 'react-native';
 import type { IEventoCreate } from '../types/events';
 import { useNavigation } from '@react-navigation/native';
-import { BookOpen, Target, Timer, Brain, Zap, TrendingUp, Music, Calendar, Clock, Type, ChevronDown, ChevronUp, X, Sparkles, Headphones, Notebook } from 'lucide-react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { BookOpen, Target, Timer, Brain, TrendingUp, Music, Calendar, Clock, Type, ChevronDown, ChevronUp, X, Sparkles, Headphones, Notebook, CheckCircle, Plus } from 'lucide-react-native';
 import { getAlbums } from '../utils/musicApi';
 import { getLocalAlbumImage } from '../utils/musicUtils';
 import type { Album } from '../types/api';
@@ -31,17 +30,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onSave,
 }) => {
   const navigation = useNavigation();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState({
     nombreEvento: '',
     fechaEvento: '',
-    hours: 1,
-    minutes: 0,
-    period: 'AM',
+    horaEvento: '09:00:00',
     descripcionEvento: '',
-    tipoEvento: 'concentracion' as 'normal' | 'concentracion',
-    metodoSeleccionado: null as number | null,
-    albumSeleccionado: null as number | null,
+    tipoEvento: 'concentracion',
+    idMetodo: undefined as number | undefined,
+    idAlbum: undefined as number | undefined,
   });
 
   const [isMethodsExpanded, setIsMethodsExpanded] = useState(false);
@@ -52,51 +50,45 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const metodosDisponibles = [
     { 
       id: 1, 
-      nombre: 'Método Pomodoro', 
+      nombre_metodo: 'Método Pomodoro', 
       descripcion: 'Técnica de gestión de tiempo con intervalos de trabajo y descanso', 
       icono: Timer, 
       color: '#8B5CF6',
-      gradient: ['#8B5CF6', '#7C3AED']
     },
     { 
       id: 2, 
-      nombre: 'Mapas Mentales', 
+      nombre_metodo: 'Mapas Mentales', 
       descripcion: 'Organización visual de ideas y conceptos', 
       icono: Brain, 
       color: '#10B981',
-      gradient: ['#10B981', '#059669']
     },
     { 
       id: 3, 
-      nombre: 'Método Feynman', 
+      nombre_metodo: 'Método Feynman', 
       descripcion: 'Explicación de conceptos en términos simples', 
       icono: BookOpen, 
       color: '#06B6D4',
-      gradient: ['#06B6D4', '#0891B2']
     },
     { 
       id: 4, 
-      nombre: 'Repaso Espaciado', 
+      nombre_metodo: 'Repaso Espaciado', 
       descripcion: 'Técnica de memorización con intervalos crecientes', 
       icono: TrendingUp, 
       color: '#F59E0B',
-      gradient: ['#F59E0B', '#D97706']
     },
     { 
       id: 5, 
-      nombre: 'Método Cornell', 
+      nombre_metodo: 'Método Cornell', 
       descripcion: 'Sistema de toma de notas estructurado', 
       icono: Notebook, 
       color: '#3B82F6',
-      gradient: ['#3B82F6', '#2563EB']
     },
     { 
       id: 6, 
-      nombre: 'Práctica Activa', 
+      nombre_metodo: 'Práctica Activa', 
       descripcion: 'Aprendizaje mediante aplicación práctica de conocimientos', 
       icono: Target, 
       color: '#EC4899',
-      gradient: ['#EC4899', '#DB2777']
     },
   ];
 
@@ -105,16 +97,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      
       setFormData({
         nombreEvento: '',
-        fechaEvento: '',
-        hours: 1,
-        minutes: 0,
-        period: 'AM',
+        fechaEvento: formattedDate,
+        horaEvento: '09:00:00',
         descripcionEvento: '',
         tipoEvento: 'concentracion',
-        metodoSeleccionado: null,
-        albumSeleccionado: null,
+        idMetodo: undefined,
+        idAlbum: undefined,
       });
       setIsMethodsExpanded(false);
       setIsAlbumsExpanded(false);
@@ -146,67 +139,50 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     if (!formData.fechaEvento) {
       newErrors.fechaEvento = 'La fecha del evento es requerida';
     } else {
-      const convertTo24Hour = (hours: number, period: string): string => {
-        let hour24 = hours;
-        if (period === 'PM' && hours !== 12) {
-          hour24 = hours + 12;
-        } else if (period === 'AM' && hours === 12) {
-          hour24 = 0;
+      // Validate date format YYYY-MM-DD
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(formData.fechaEvento)) {
+        newErrors.fechaEvento = 'Formato de fecha inválido. Use YYYY-MM-DD';
+      } else {
+        const [year, month, day] = formData.fechaEvento.split('-').map(Number);
+        if (month < 1 || month > 12) {
+          newErrors.fechaEvento = 'Mes inválido. Debe ser entre 01-12';
+        } else if (day < 1 || day > 31) {
+          newErrors.fechaEvento = 'Día inválido. Debe ser entre 01-31';
+        } else {
+          const eventDateTime = new Date(`${formData.fechaEvento}T${formData.horaEvento}`);
+          const now = new Date();
+
+          if (isNaN(eventDateTime.getTime())) {
+            newErrors.fechaEvento = 'Fecha u hora inválida';
+          } else if (eventDateTime <= now) {
+            newErrors.fechaEvento = 'La fecha y hora deben ser futuras';
+          }
         }
-        return `${hour24.toString().padStart(2, '0')}:${formData.minutes.toString().padStart(2, '0')}:00`;
-      };
-
-      const eventDateTimeString = `${formData.fechaEvento}T${convertTo24Hour(formData.hours, formData.period)}`;
-      const eventDateTime = new Date(eventDateTimeString);
-      const now = new Date();
-
-      if (eventDateTime <= now) {
-        newErrors.fechaEvento = 'No se pueden crear eventos en el pasado. Para eventos del mismo día, la hora debe ser futura.';
       }
     }
 
-    if (formData.hours < 1 || formData.hours > 12) {
-      newErrors.horaEvento = 'La hora debe estar entre 1 y 12';
+    if (!formData.horaEvento) {
+      newErrors.horaEvento = 'La hora del evento es requerida';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const convertTo24Hour = (hours: number, period: string): string => {
-    let hour24 = hours;
-    if (period === 'PM' && hours !== 12) {
-      hour24 = hours + 12;
-    } else if (period === 'AM' && hours === 12) {
-      hour24 = 0;
-    }
-    return `${hour24.toString().padStart(2, '0')}:${formData.minutes.toString().padStart(2, '0')}:00`;
-  };
-
   const autoCompleteEventFromMethod = (methodId: number) => {
     const metodo = metodosDisponibles.find(m => m.id === methodId);
     if (!metodo) return;
 
-    const eventName = `Sesión de ${metodo.nombre}`;
-    const eventDescription = `Sesión dedicada al método ${metodo.nombre}. ${metodo.descripcion}`;
-    const durationMap: { [key: number]: { hours: number; minutes: number } } = {
-      1: { hours: 0, minutes: 25 },
-      2: { hours: 0, minutes: 45 },
-      3: { hours: 1, minutes: 0 },
-      4: { hours: 0, minutes: 30 },
-      5: { hours: 0, minutes: 40 },
-      6: { hours: 0, minutes: 50 },
-    };
-
-    const duration = durationMap[methodId] || { hours: 1, minutes: 0 };
+    const eventName = `Sesión de ${metodo.nombre_metodo}`;
+    const eventDescription = `Sesión dedicada al método ${metodo.nombre_metodo}. ${metodo.descripcion}`;
 
     setFormData(prev => ({
       ...prev,
       nombreEvento: eventName,
       descripcionEvento: eventDescription,
-      hours: duration.hours,
-      minutes: duration.minutes,
-      metodoSeleccionado: methodId,
+      idMetodo: methodId,
+      tipoEvento: 'concentracion',
     }));
   };
 
@@ -219,12 +195,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     try {
       const eventData: IEventoCreate = {
         nombreEvento: formData.nombreEvento.trim(),
-        fechaEvento: new Date(formData.fechaEvento).toISOString().split('T')[0],
-        horaEvento: convertTo24Hour(formData.hours, formData.period),
+        fechaEvento: formData.fechaEvento,
+        horaEvento: formData.horaEvento,
         descripcionEvento: formData.descripcionEvento.trim() || undefined,
-        tipoEvento: formData.tipoEvento,
-        metodosSeleccionados: formData.metodoSeleccionado ? [formData.metodoSeleccionado] : undefined,
-        albumSeleccionado: formData.albumSeleccionado || undefined,
+        tipoEvento: formData.tipoEvento || undefined,
+        idUsuario: user?.id_usuario || 1,
+        idMetodo: formData.idMetodo,
+        idAlbum: formData.idAlbum,
+        estado: 'pending',
       };
 
       await onSave(eventData);
@@ -246,11 +224,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const formatTimeForDisplay = (time: string) => {
+    if (!time) return '09:00';
+    
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    
+    return `${hour12.toString().padStart(2, '0')}:${minutes} ${period}`;
   };
 
   if (!isOpen) return null;
@@ -262,9 +251,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} importantForAccessibility="no">
         <View style={styles.container}>
-          {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={styles.iconContainer}>
@@ -282,7 +270,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <View style={styles.form}>
-              {/* Event Name */}
               <View style={styles.inputGroup}>
                 <View style={styles.labelContainer}>
                   <Type size={16} color="#10B981" style={styles.labelIcon} />
@@ -305,9 +292,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 )}
               </View>
 
-              {/* Date and Time Row */}
               <View style={styles.row}>
-                {/* Date */}
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <View style={styles.labelContainer}>
                     <Calendar size={16} color="#10B981" style={styles.labelIcon} />
@@ -321,7 +306,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       style={styles.dateTextInput}
                       value={formData.fechaEvento}
                       onChangeText={(text) => handleInputChange('fechaEvento', text)}
-                      placeholder="dd/mm/aaaa"
+                      placeholder="YYYY-MM-DD"
                       placeholderTextColor="#6b7280"
                     />
                   </View>
@@ -330,7 +315,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   )}
                 </View>
 
-                {/* Time */}
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <View style={styles.labelContainer}>
                     <Clock size={16} color="#10B981" style={styles.labelIcon} />
@@ -338,73 +322,32 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       Hora <Text style={styles.required}>*</Text>
                     </Text>
                   </View>
-                  <View style={[styles.timeInputContainer, errors.horaEvento && styles.inputError]}>
-                    <View style={styles.timePickerGroup}>
-                      <TouchableOpacity
-                        style={styles.timePickerButton}
-                        onPress={() => {
-                          const newHour = formData.hours >= 12 ? 1 : formData.hours + 1;
-                          setFormData(prev => ({ ...prev, hours: newHour }));
-                        }}
-                      >
-                        <Text style={styles.timePickerText}>
-                          {formData.hours.toString().padStart(2, '0')}
-                        </Text>
-                        <Text style={styles.timePickerLabel}>Horas</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.timeSeparator}>:</Text>
-                      <TouchableOpacity
-                        style={styles.timePickerButton}
-                        onPress={() => {
-                          const newMinute = (formData.minutes + 5) % 60;
-                          setFormData(prev => ({ ...prev, minutes: newMinute }));
-                        }}
-                      >
-                        <Text style={styles.timePickerText}>
-                          {formData.minutes.toString().padStart(2, '0')}
-                        </Text>
-                        <Text style={styles.timePickerLabel}>Minutos</Text>
-                      </TouchableOpacity>
-                    </View>
-                    
-                    <View style={styles.periodSelector}>
-                      <TouchableOpacity
-                        style={[
-                          styles.periodButton,
-                          formData.period === 'AM' && styles.periodButtonActive
-                        ]}
-                        onPress={() => setFormData(prev => ({ ...prev, period: 'AM' }))}
-                      >
-                        <Text style={[
-                          styles.periodText,
-                          formData.period === 'AM' && styles.periodTextActive
-                        ]}>AM</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.periodButton,
-                          formData.period === 'PM' && styles.periodButtonActive
-                        ]}
-                        onPress={() => setFormData(prev => ({ ...prev, period: 'PM' }))}
-                      >
-                        <Text style={[
-                          styles.periodText,
-                          formData.period === 'PM' && styles.periodTextActive
-                        ]}>PM</Text>
-                      </TouchableOpacity>
-                    </View>
+                  <View style={[styles.timeInput, errors.horaEvento && styles.inputError]}>
+                    <Clock size={20} color="#6b7280" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.timeTextInput}
+                      value={formData.horaEvento}
+                      onChangeText={(text) => handleInputChange('horaEvento', text)}
+                      placeholder="HH:MM:SS"
+                      placeholderTextColor="#6b7280"
+                    />
                   </View>
+                  <Text style={styles.timeHint}>
+                    {formatTimeForDisplay(formData.horaEvento)}
+                  </Text>
                   {errors.horaEvento && (
                     <Text style={styles.errorText}>{errors.horaEvento}</Text>
                   )}
                 </View>
               </View>
 
-              {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Descripción <Text style={styles.optional}>(opcional)</Text>
-                </Text>
+                <View style={styles.labelContainer}>
+                  <Text style={[styles.labelIcon, { fontSize: 16 }]}>📄</Text>
+                  <Text style={styles.label}>
+                    Descripción <Text style={styles.optional}>(opcional)</Text>
+                  </Text>
+                </View>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.descripcionEvento}
@@ -416,7 +359,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 />
               </View>
 
-              {/* Event Type */}
               <View style={styles.eventTypeSection}>
                 <Text style={styles.sectionTitle}>Tipo de Evento</Text>
                 
@@ -425,7 +367,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     styles.eventTypeCard,
                     formData.tipoEvento === 'concentracion' && styles.eventTypeCardSelected,
                   ]}
-                  onPress={() => setFormData(prev => ({ ...prev, tipoEvento: 'concentracion' }))}
+                  onPress={() => handleInputChange('tipoEvento', 'concentracion')}
                 >
                   <View style={styles.eventTypeCardHeader}>
                     <View style={styles.eventTypeIcon}>
@@ -441,14 +383,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         </View>
                       )}
                     </View>
-                    <View style={[
-                      styles.eventTypeRadio,
-                      formData.tipoEvento === 'concentracion' && styles.eventTypeRadioSelected
-                    ]}>
-                      {formData.tipoEvento === 'concentracion' && (
-                        <View style={styles.radioSelectedDot} />
-                      )}
-                    </View>
+                    {formData.tipoEvento === 'concentracion' && (
+                      <CheckCircle size={20} color="#10B981" />
+                    )}
                   </View>
                   <Text style={styles.eventTypeDescription}>
                     Incluye temporizador, métodos de estudio y música ambiental
@@ -460,7 +397,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     styles.eventTypeCard,
                     formData.tipoEvento === 'normal' && styles.eventTypeCardSelected,
                   ]}
-                  onPress={() => setFormData(prev => ({ ...prev, tipoEvento: 'normal' }))}
+                  onPress={() => handleInputChange('tipoEvento', 'normal')}
                 >
                   <View style={styles.eventTypeCardHeader}>
                     <View style={[styles.eventTypeIcon, styles.eventTypeIconNormal]}>
@@ -471,14 +408,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         Evento Normal
                       </Text>
                     </View>
-                    <View style={[
-                      styles.eventTypeRadio,
-                      formData.tipoEvento === 'normal' && styles.eventTypeRadioSelectedNormal
-                    ]}>
-                      {formData.tipoEvento === 'normal' && (
-                        <View style={[styles.radioSelectedDot, styles.radioSelectedDotNormal]} />
-                      )}
-                    </View>
+                    {formData.tipoEvento === 'normal' && (
+                      <CheckCircle size={20} color="#3b82f6" />
+                    )}
                   </View>
                   <Text style={styles.eventTypeDescription}>
                     Solo recordatorio de calendario básico
@@ -486,145 +418,149 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Study Methods Selection */}
-              <View style={styles.selectionSection}>
-                <TouchableOpacity
-                  style={styles.selectionHeader}
-                  onPress={() => setIsMethodsExpanded(!isMethodsExpanded)}
-                >
-                  <View style={styles.selectionHeaderContent}>
-                    <View style={styles.selectionIcon}>
-                      <Brain size={20} color="#fff" />
-                    </View>
-                    <Text style={styles.selectionTitle}>Seleccionar Método de Estudio</Text>
-                  </View>
-                  {isMethodsExpanded ? (
-                    <ChevronUp size={20} color="#10B981" />
-                  ) : (
-                    <ChevronDown size={20} color="#10B981" />
-                  )}
-                </TouchableOpacity>
-
-                {isMethodsExpanded && (
-                  <View style={styles.selectionContent}>
-                    <Text style={styles.selectionSubtitle}>
-                      Elige el método que usarás durante tu sesión de concentración
-                    </Text>
-                    
-                    <View style={styles.methodsGrid}>
-                      {metodosDisponibles.map((metodo) => {
-                        const IconComponent = metodo.icono;
-                        const isSelected = formData.metodoSeleccionado === metodo.id;
-
-                        return (
-                          <TouchableOpacity
-                            key={metodo.id}
-                            style={[
-                              styles.methodCard,
-                              isSelected && styles.methodCardSelected
-                            ]}
-                            onPress={() => autoCompleteEventFromMethod(metodo.id)}
-                          >
-                            <View style={styles.methodCardHeader}>
-                              <View style={[styles.methodIconContainer, { backgroundColor: metodo.gradient[0] }]}>
-                                <IconComponent size={20} color="#fff" />
-                              </View>
-                              <View style={styles.methodInfo}>
-                                <Text style={styles.methodName}>{metodo.nombre}</Text>
-                              </View>
-                              {isSelected && (
-                                <View style={styles.selectedBadge}>
-                                  <View style={styles.selectedBadgeDot} />
-                                  <Text style={styles.selectedBadgeText}>Seleccionado</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.methodDescription}>
-                              {metodo.descripcion}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <Text style={styles.selectionHint}>
-                      Selecciona un método para crear un evento automáticamente
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Albums Selection */}
-              <View style={styles.selectionSection}>
-                <TouchableOpacity
-                  style={styles.selectionHeader}
-                  onPress={() => setIsAlbumsExpanded(!isAlbumsExpanded)}
-                >
-                  <View style={styles.selectionHeaderContent}>
-                    <View style={[styles.selectionIcon, styles.albumIcon]}>
-                      <Headphones size={20} color="#fff" />
-                    </View>
-                    <Text style={styles.selectionTitle}>Seleccionar Álbum de Música</Text>
-                  </View>
-                  {isAlbumsExpanded ? (
-                    <ChevronUp size={20} color="#8B5CF6" />
-                  ) : (
-                    <ChevronDown size={20} color="#8B5CF6" />
-                  )}
-                </TouchableOpacity>
-
-                {isAlbumsExpanded && (
-                  <View style={styles.selectionContent}>
-                    <Text style={styles.selectionSubtitle}>
-                      Elige el álbum que te ayudará a mantener la concentración
-                    </Text>
-
-                    {loadingAlbums ? (
-                      <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Cargando álbumes...</Text>
+              {formData.tipoEvento === 'concentracion' && (
+                <View style={styles.selectionSection}>
+                  <TouchableOpacity
+                    style={styles.selectionHeader}
+                    onPress={() => setIsMethodsExpanded(!isMethodsExpanded)}
+                  >
+                    <View style={styles.selectionHeaderContent}>
+                      <View style={styles.selectionIcon}>
+                        <Brain size={20} color="#fff" />
                       </View>
+                      <Text style={styles.selectionTitle}>
+                        Método de Estudio {formData.idMetodo && '✓'}
+                      </Text>
+                    </View>
+                    {isMethodsExpanded ? (
+                      <ChevronUp size={20} color="#10B981" />
                     ) : (
-                      <View style={styles.albumsGrid}>
-                        {albums.map((album) => {
-                          const isSelected = formData.albumSeleccionado === album.id_album;
+                      <ChevronDown size={20} color="#10B981" />
+                    )}
+                  </TouchableOpacity>
+
+                  {isMethodsExpanded && (
+                    <View style={styles.selectionContent}>
+                      <Text style={styles.selectionSubtitle}>
+                        Elige el método que usarás durante tu sesión de concentración
+                      </Text>
+                      
+                      <View style={styles.methodsGrid}>
+                        {metodosDisponibles.map((metodo) => {
+                          const IconComponent = metodo.icono;
+                          const isSelected = formData.idMetodo === metodo.id;
 
                           return (
                             <TouchableOpacity
-                              key={album.id_album}
+                              key={metodo.id}
                               style={[
-                                styles.albumCard,
-                                isSelected && styles.albumCardSelected
+                                styles.methodCard,
+                                isSelected && styles.methodCardSelected
                               ]}
-                              onPress={() => setFormData(prev => ({ ...prev, albumSeleccionado: album.id_album }))}
+                              onPress={() => {
+                                autoCompleteEventFromMethod(metodo.id);
+                                setIsMethodsExpanded(false);
+                              }}
                             >
-                              <Image
-                                source={getLocalAlbumImage(album.id_album)}
-                                style={styles.albumImage}
-                                resizeMode="cover"
-                              />
-                              <View style={styles.albumInfo}>
-                                <Text style={styles.albumName}>{album.nombre_album}</Text>
-                                <Text style={styles.albumGenre}>{album.genero}</Text>
-                              </View>
-                              {isSelected && (
-                                <View style={styles.albumSelectedIndicator}>
-                                  <View style={styles.albumSelectedIcon}>
-                                    <Headphones size={12} color="#fff" />
-                                  </View>
+                              <View style={styles.methodCardHeader}>
+                                <View style={[styles.methodIconContainer, { backgroundColor: metodo.color }]}>
+                                  <IconComponent size={20} color="#fff" />
                                 </View>
-                              )}
+                                <View style={styles.methodInfo}>
+                                  <Text style={styles.methodName}>{metodo.nombre_metodo}</Text>
+                                </View>
+                                {isSelected && (
+                                  <View style={styles.selectedBadge}>
+                                    <CheckCircle size={16} color="#10B981" />
+                                  </View>
+                                )}
+                              </View>
+                              <Text style={styles.methodDescription}>
+                                {metodo.descripcion}
+                              </Text>
                             </TouchableOpacity>
                           );
                         })}
                       </View>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {formData.tipoEvento === 'concentracion' && (
+                <View style={styles.selectionSection}>
+                  <TouchableOpacity
+                    style={styles.selectionHeader}
+                    onPress={() => setIsAlbumsExpanded(!isAlbumsExpanded)}
+                  >
+                    <View style={styles.selectionHeaderContent}>
+                      <View style={[styles.selectionIcon, styles.albumIcon]}>
+                        <Headphones size={20} color="#fff" />
+                      </View>
+                      <Text style={styles.selectionTitle}>
+                        Álbum de Música {formData.idAlbum && '✓'}
+                      </Text>
+                    </View>
+                    {isAlbumsExpanded ? (
+                      <ChevronUp size={20} color="#8B5CF6" />
+                    ) : (
+                      <ChevronDown size={20} color="#8B5CF6" />
                     )}
-                  </View>
-                )}
-              </View>
+                  </TouchableOpacity>
+
+                  {isAlbumsExpanded && (
+                    <View style={styles.selectionContent}>
+                      <Text style={styles.selectionSubtitle}>
+                        Elige el álbum que te ayudará a mantener la concentración
+                      </Text>
+
+                      {loadingAlbums ? (
+                        <View style={styles.loadingContainer}>
+                          <Text style={styles.loadingText}>Cargando álbumes...</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.albumsGrid}>
+                          {albums.map((album) => {
+                            const isSelected = formData.idAlbum === album.id_album;
+
+                            return (
+                              <TouchableOpacity
+                                key={album.id_album}
+                                style={[
+                                  styles.albumCard,
+                                  isSelected && styles.albumCardSelected
+                                ]}
+                                onPress={() => {
+                                  handleInputChange('idAlbum', album.id_album);
+                                  setIsAlbumsExpanded(false);
+                                }}
+                              >
+                                <Image
+                                  source={getLocalAlbumImage(album.id_album)}
+                                  style={styles.albumImage}
+                                  resizeMode="cover"
+                                />
+                                <View style={styles.albumInfo}>
+                                  <Text style={styles.albumName}>{album.nombre_album}</Text>
+                                  <Text style={styles.albumGenre}>{album.genero}</Text>
+                                </View>
+                                {isSelected && (
+                                  <View style={styles.albumSelectedIndicator}>
+                                    <CheckCircle size={16} color="#8B5CF6" />
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </ScrollView>
 
-          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={onClose}
@@ -642,7 +578,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <Text style={styles.createButtonText}>Creando...</Text>
               ) : (
                 <>
-                  <Text style={styles.createButtonIcon}>+</Text>
+                  <Plus size={20} color="#fff" />
                   <Text style={styles.createButtonText}>Crear Evento</Text>
                 </>
               )}
@@ -654,6 +590,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 };
 
+// Estilos (mantener igual que antes, solo ajustar nombres si es necesario)
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -756,7 +693,6 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#ffffff',
     fontSize: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   inputError: {
     borderColor: '#ef4444',
@@ -766,13 +702,22 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 12,
     marginTop: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   row: {
     flexDirection: 'row',
     gap: 16,
   },
   dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0a0a0a',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  timeInput: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0a0a0a',
@@ -789,75 +734,21 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#ffffff',
     fontSize: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  timeInputContainer: {
-    backgroundColor: '#0a0a0a',
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 12,
-    padding: 12,
-  },
-  timePickerGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  timePickerButton: {
+  timeTextInput: {
     flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    marginHorizontal: 4,
-  },
-  timePickerText: {
-    color: '#10B981',
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  timePickerLabel: {
-    color: '#6b7280',
-    fontSize: 11,
-    marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  timeSeparator: {
-    color: '#10B981',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 8,
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 4,
-    alignSelf: 'center',
-  },
-  periodButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  periodButtonActive: {
-    backgroundColor: '#10B981',
-  },
-  periodText: {
-    color: '#6b7280',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  periodTextActive: {
     color: '#ffffff',
+    fontSize: 16,
+  },
+  timeHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   eventTypeSection: {
     gap: 12,
@@ -867,7 +758,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   eventTypeCard: {
     backgroundColor: '#0a0a0a',
@@ -910,39 +800,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   eventTypeDescription: {
     fontSize: 14,
     color: '#9ca3af',
     lineHeight: 20,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  eventTypeRadio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#333333',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  eventTypeRadioSelected: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  eventTypeRadioSelectedNormal: {
-    borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-  },
-  radioSelectedDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
-  },
-  radioSelectedDotNormal: {
-    backgroundColor: '#3b82f6',
   },
   recommendedBadge: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
@@ -956,7 +818,6 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   selectionSection: {
     backgroundColor: '#0a0a0a',
@@ -992,7 +853,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   selectionContent: {
     padding: 20,
@@ -1005,7 +865,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 20,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   methodsGrid: {
     gap: 12,
@@ -1047,45 +906,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   methodDescription: {
     fontSize: 13,
     color: '#9ca3af',
     lineHeight: 18,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   selectedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  selectedBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-    marginRight: 6,
-  },
-  selectedBadgeText: {
-    color: '#10B981',
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  selectionHint: {
-    fontSize: 13,
-    color: '#10B981',
-    textAlign: 'center',
-    marginTop: 20,
-    fontStyle: 'italic',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   albumsGrid: {
     gap: 12,
@@ -1120,35 +950,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   albumGenre: {
     fontSize: 13,
     color: '#8B5CF6',
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   albumSelectedIndicator: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 24,
-    height: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  albumSelectedIcon: {
-    width: 12,
-    height: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   loadingContainer: {
     padding: 32,
@@ -1157,7 +968,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#6b7280',
     fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   footer: {
     flexDirection: 'row',
@@ -1190,23 +1000,13 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   createButton: {
     backgroundColor: '#10B981',
-  },
-  createButtonIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   createButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 });
-
-export default CreateEventModal;

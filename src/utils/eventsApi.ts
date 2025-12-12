@@ -76,7 +76,7 @@ export const eventsApi = {
     }
 
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS}/${eventId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
