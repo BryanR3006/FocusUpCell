@@ -21,6 +21,8 @@ import {
 import { useMusicPlayer } from '../hooks/useMusicPlayer';
 import { replaceIfSessionAlbum } from '../services/audioService';
 import { getSongsByAlbumId } from '../utils/musicApi';
+import { useFocusMode } from '../contexts/FocusModeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 // Claves para almacenamiento
 const STORAGE_KEYS = {
@@ -106,6 +108,8 @@ export const ConcentrationSessionProvider: React.FC<ConcentrationSessionProvider
 
   // Servicios
   const musicPlayer = useMusicPlayer();
+  const focusMode = useFocusMode();
+  const { user } = useAuth();
 
   /**
    * Inicializa el provider al montar
@@ -277,6 +281,23 @@ export const ConcentrationSessionProvider: React.FC<ConcentrationSessionProvider
       await saveSessionToStorage(activeSession);
       console.log('[PROVIDER] Session started successfully');
 
+      // Start Focus Mode
+      if (user?.distracciones && user.distracciones.length > 0) {
+        try {
+          const focusConfig = {
+            blockApps: true,
+            muteNotifications: true,
+            blockedApps: user.distracciones,
+            startTime: Date.now(),
+            endTime: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+          };
+          await focusMode.startFocusMode(focusConfig);
+          console.log('[PROVIDER] Focus Mode started');
+        } catch (focusError) {
+          console.error('[PROVIDER] Error starting Focus Mode:', focusError);
+        }
+      }
+
       // Restaurar música si hay álbum asociado
       if (payload.albumId && musicPlayer) {
         try {
@@ -417,10 +438,18 @@ export const ConcentrationSessionProvider: React.FC<ConcentrationSessionProvider
 
       // Marcar como finish later en servidor
       await sessionService.finishLater(
-        state.activeSession.sessionId, 
-        currentElapsedMs, 
+        state.activeSession.sessionId,
+        currentElapsedMs,
         "Aplazada desde móvil"
       );
+
+      // Stop Focus Mode
+      try {
+        await focusMode.stopFocusMode();
+        console.log('[PROVIDER] Focus Mode stopped');
+      } catch (focusError) {
+        console.error('[PROVIDER] Error stopping Focus Mode:', focusError);
+      }
 
       // Limpiar estado
       setState(prev => ({
@@ -464,6 +493,14 @@ export const ConcentrationSessionProvider: React.FC<ConcentrationSessionProvider
         currentElapsedMs, 
         "Sesión completada desde móvil"
       );
+
+      // Stop Focus Mode
+      try {
+        await focusMode.stopFocusMode();
+        console.log('[PROVIDER] Focus Mode stopped');
+      } catch (focusError) {
+        console.error('[PROVIDER] Error stopping Focus Mode:', focusError);
+      }
 
       // Limpiar estado
       setState(prev => ({

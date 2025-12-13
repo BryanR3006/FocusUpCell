@@ -7,7 +7,7 @@ export interface User {
   fecha_nacimiento: Date;
   horario_fav?: string;
   intereses?: number[];
-  distracciones?: number[];
+  distracciones?: string[];
   objetivo?: number;
 }
 

@@ -1160,13 +1160,21 @@ const Home: React.FC = () => {
           </View>
           <View style={styles.quickActionsContainer}>
             <TouchableOpacity
+              style={[styles.quickStartButton, { backgroundColor: COLORS.warning }]}
+              onPress={() => navigateTo('FocusMode')}
+            >
+              <Target size={18} color="#fff" />
+              <Text style={styles.quickStartText}>Enfoque Total</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.quickStartButton}
               onPress={() => navigateTo('sessions')}
             >
               <Zap size={18} color="#fff" />
               <Text style={styles.quickStartText}>Sesiones</Text>
             </TouchableOpacity>
-          
+
           </View>
         </View>
 

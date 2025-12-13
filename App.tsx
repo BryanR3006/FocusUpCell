@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider } from "./src/contexts/AuthContext";
 import { AudioProvider } from "./src/contexts/AudioContext";
+import { FocusModeProvider } from "./src/contexts/FocusModeContext";
 import { CompactMusicPlayer } from "./src/ui/CompactMusicPlayer";
 import type { RootStackParamList } from "./src/types/navigation";
 
@@ -40,15 +41,18 @@ import MindMapsIntroView from "./src/pages/MindMapsInfoPage";
 import MindMapsStepsView from "./src/pages/MindMapsStepsPage";
 import EventsPage from "./src/pages/EventsPage";
 import { StartSession } from "./src/pages/sessions/StartSession";
+import FocusModePermissions from "./src/pages/FocusModePermissions";
+import FocusModeScreen from "./src/pages/FocusModeScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <AuthProvider>
-      <AudioProvider>
-        <NavigationContainer>
-          <ConcentrationSessionProvider>
+      <FocusModeProvider>
+        <AudioProvider>
+          <NavigationContainer>
+            <ConcentrationSessionProvider>
             <Stack.Navigator
               initialRouteName="Login"
               screenOptions={{
@@ -104,11 +108,16 @@ export default function App() {
 
               {/* Sesion de concentracion */}
               <Stack.Screen name="sessions" component={StartSession} />
+
+              {/* Focus Mode */}
+              <Stack.Screen name="FocusMode" component={FocusModeScreen} />
+              <Stack.Screen name="FocusModePermissions" component={FocusModePermissions} />
             </Stack.Navigator>
-          </ConcentrationSessionProvider>
-        </NavigationContainer>
-        <CompactMusicPlayer />
-      </AudioProvider>
+            </ConcentrationSessionProvider>
+          </NavigationContainer>
+          <CompactMusicPlayer />
+        </AudioProvider>
+      </FocusModeProvider>
     </AuthProvider>
   );
 }

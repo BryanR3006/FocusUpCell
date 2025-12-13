@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://192.168.1.51:3001/api/v1";
+export const API_BASE_URL = "http://localhost:3001/api/v1";
 
 export const API_ENDPOINTS = {
   // ---------------------------
@@ -7,8 +7,8 @@ export const API_ENDPOINTS = {
   REQUEST_VERIFICATION_CODE: "/auth/request-verification-code",
   VERIFY_CODE: "/auth/verify-code",
   REGISTER: "/auth/register",
-  LOGIN: "/users/login",
-  LOGOUT: "/users/logout",
+  LOGIN: "/auth/login",
+  LOGOUT: "/auth/logout",
 
   // ---------------------------
   // USUARIOS

@@ -62,4 +62,6 @@ export type RootStackParamList = {
   Reports: undefined;
   Events: undefined;
   sessions: undefined;
+  FocusMode: undefined;
+  FocusModePermissions: undefined;
 };
