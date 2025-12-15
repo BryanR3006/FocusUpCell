@@ -7,15 +7,10 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Platform,
   Alert,
 } from 'react-native';
-// import DateTimePicker from '@react-native-community/datetimepicker';
-// import { Picker } from '@react-native-picker/picker';
-// import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { IEvento, IEventoUpdate } from '../types/events';
-// import { MethodSelectionModal } from '../components/MethodSelectionModal';
-// import { AlbumSelectionModal } from '../components/AlbumSelectionModal';
+import { X, Calendar, Clock, BookOpen, Music, Check } from 'lucide-react-native';
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -33,54 +28,42 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   const [formData, setFormData] = useState({
     nombreEvento: '',
     fechaEvento: '',
-    hours: 1,
-    minutes: 0,
-    period: 'AM',
+    horaEvento: '',
     descripcionEvento: '',
+    tipoEvento: '',
+    idMetodo: undefined as number | undefined,
+    idAlbum: undefined as number | undefined,
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [isMethodModalOpen, setIsMethodModalOpen] = useState(false);
-  const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<any>(null);
   const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
 
-  const getProperty = (snakeCase: string, camelCase: string) => {
+  const getProperty = (propertyName: keyof IEvento) => {
     if (!event) return '';
-    return event[snakeCase] || event[camelCase] || '';
+    return (event[propertyName] as any) || '';
   };
 
   const getId = () => {
     if (!event) return 0;
-    return event.id_evento || event.idEvento || 0;
-  };
-
-  const convertTo12Hour = (time24h: string) => {
-    if (!time24h) return { hours: 1, minutes: 0, period: 'AM' };
-
-    const [hours24, minutes] = time24h.split(':').map(Number);
-    const period = hours24 >= 12 ? 'PM' : 'AM';
-    const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
-
-    return { hours: hours12, minutes: minutes || 0, period };
+    return event.idEvento || 0;
   };
 
   useEffect(() => {
     if (event && isOpen) {
-      const timeData = convertTo12Hour(getProperty('hora_evento', 'horaEvento'));
-      
       setFormData({
-        nombreEvento: getProperty('nombre_evento', 'nombreEvento'),
-        fechaEvento: getProperty('fecha_evento', 'fechaEvento'),
-        hours: timeData.hours,
-        minutes: timeData.minutes,
-        period: timeData.period,
-        descripcionEvento: getProperty('descripcion_evento', 'descripcionEvento'),
+        nombreEvento: event.nombreEvento,
+        fechaEvento: event.fechaEvento,
+        horaEvento: event.horaEvento,
+        descripcionEvento: event.descripcionEvento || '',
+        tipoEvento: event.tipoEvento || '',
+        idMetodo: event.metodo?.idMetodo,
+        idAlbum: event.album?.idAlbum,
       });
 
-
+      // Reset selected method and album
       setSelectedMethod(null);
       setSelectedAlbum(null);
       setErrors({});
@@ -106,22 +89,12 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
       }
     }
 
-    if (formData.hours < 1 || formData.hours > 12) {
-      newErrors.horaEvento = 'La hora debe estar entre 1 y 12';
+    if (!formData.horaEvento) {
+      newErrors.horaEvento = 'La hora del evento es requerida';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const convertTo24Hour = (hours: number, period: string): string => {
-    let hour24 = hours;
-    if (period === 'PM' && hours !== 12) {
-      hour24 = hours + 12;
-    } else if (period === 'AM' && hours === 12) {
-      hour24 = 0;
-    }
-    return `${hour24.toString().padStart(2, '0')}:${formData.minutes.toString().padStart(2, '0')}:00`;
   };
 
   const handleSubmit = async () => {
@@ -132,13 +105,20 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
     setLoading(true);
     try {
       const eventData: IEventoUpdate = {
-        nombre_evento: formData.nombreEvento.trim(),
-        fecha_evento: new Date(formData.fechaEvento).toISOString().split('T')[0],
-        hora_evento: convertTo24Hour(formData.hours, formData.period),
-        descripcion_evento: formData.descripcionEvento.trim() || undefined,
-        ...(selectedMethod && { id_metodo: selectedMethod.id_metodo }),
-        ...(selectedAlbum && { id_album: selectedAlbum.id_album }),
+        nombreEvento: formData.nombreEvento.trim(),
+        fechaEvento: formData.fechaEvento,
+        horaEvento: formData.horaEvento,
+        descripcionEvento: formData.descripcionEvento.trim() || undefined,
+        tipoEvento: formData.tipoEvento || undefined,
       };
+
+      // Solo agregar método y álbum si son diferentes
+      if (formData.idMetodo !== undefined) {
+        eventData.idMetodo = formData.idMetodo;
+      }
+      if (formData.idAlbum !== undefined) {
+        eventData.idAlbum = formData.idAlbum;
+      }
 
       await onSave(getId(), eventData);
       onClose();
@@ -155,35 +135,30 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
-
   const handleAddMethod = () => {
-    // Temporarily disabled - MethodSelectionModal not available
     Alert.alert('Función no disponible', 'La selección de métodos estará disponible próximamente.');
   };
+
   const handleAddAlbum = () => {
-    // Temporarily disabled - AlbumSelectionModal not available
     Alert.alert('Función no disponible', 'La selección de álbumes estará disponible próximamente.');
   };
-  
-  const handleMethodSelect = (method: any) => {
-    setSelectedMethod(method);
-    setIsMethodModalOpen(false);
+
+  const handleRemoveMethod = () => {
+    setSelectedMethod(null);
+    handleInputChange('idMetodo', undefined as any);
   };
 
-  const handleAlbumSelect = (album: any) => {
-    setSelectedAlbum(album);
-    setIsAlbumModalOpen(false);
+  const handleRemoveAlbum = () => {
+    setSelectedAlbum(null);
+    handleInputChange('idAlbum', undefined as any);
   };
-
-  const handleRemoveMethod = () => setSelectedMethod(null);
-  const handleRemoveAlbum = () => setSelectedAlbum(null);
 
   if (!isOpen || !event) return null;
 
@@ -194,32 +169,32 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: '#1a1a1a' }]}>
+      <View style={styles.overlay} importantForAccessibility="no">
+        <View style={styles.container}>
           <ScrollView style={styles.scrollView}>
-            {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerContent}>
                 <View style={styles.iconContainer}>
-                  <Text style={{color: '#60a5fa', fontSize: 24}}>📅</Text>
+                  <Calendar size={24} color="#10B981" />
                 </View>
-                <View>
+                <View style={styles.headerText}>
                   <Text style={styles.title}>Editar Evento</Text>
                   <Text style={styles.subtitle}>Modifica los detalles de tu evento</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Text style={{color: '#9ca3af', fontSize: 20}}>×</Text>
+                <X size={24} color="#9ca3af" />
               </TouchableOpacity>
             </View>
 
-            {/* Form */}
             <View style={styles.form}>
-              {/* Event Name */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Nombre del Evento <Text style={styles.required}>*</Text>
-                </Text>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.labelIcon}>📝</Text>
+                  <Text style={styles.label}>
+                    Nombre del Evento <Text style={styles.required}>*</Text>
+                  </Text>
+                </View>
                 <TextInput
                   style={[
                     styles.input,
@@ -235,16 +210,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 )}
               </View>
 
-              {/* Date */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Fecha del Evento <Text style={styles.required}>*</Text>
-                </Text>
+                <View style={styles.labelContainer}>
+                  <Calendar size={16} color="#10B981" style={styles.labelIcon} />
+                  <Text style={styles.label}>
+                    Fecha del Evento <Text style={styles.required}>*</Text>
+                  </Text>
+                </View>
                 <TextInput
                   style={[styles.input, errors.fechaEvento && styles.inputError]}
                   value={formData.fechaEvento}
                   onChangeText={(text) => handleInputChange('fechaEvento', text)}
-                  placeholder="YYYY-MM-DD (ej: 2025-12-06)"
+                  placeholder="YYYY-MM-DD"
                   placeholderTextColor="#6b7280"
                 />
                 {errors.fechaEvento && (
@@ -252,28 +229,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 )}
               </View>
 
-              {/* Time */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Hora del Evento <Text style={styles.required}>*</Text>
-                </Text>
+                <View style={styles.labelContainer}>
+                  <Clock size={16} color="#10B981" style={styles.labelIcon} />
+                  <Text style={styles.label}>
+                    Hora del Evento <Text style={styles.required}>*</Text>
+                  </Text>
+                </View>
                 <TextInput
                   style={[styles.input, errors.horaEvento && styles.inputError]}
-                  value={`${formData.hours.toString().padStart(2, '0')}:${formData.minutes.toString().padStart(2, '0')} ${formData.period}`}
-                  onChangeText={(text) => {
-                    // Simple parsing for HH:MM AM/PM format
-                    const match = text.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-                    if (match) {
-                      const [, hours, minutes, period] = match;
-                      setFormData(prev => ({
-                        ...prev,
-                        hours: parseInt(hours),
-                        minutes: parseInt(minutes),
-                        period: period.toUpperCase()
-                      }));
-                    }
-                  }}
-                  placeholder="HH:MM AM/PM (ej: 02:30 PM)"
+                  value={formData.horaEvento}
+                  onChangeText={(text) => handleInputChange('horaEvento', text)}
+                  placeholder="HH:MM:SS"
                   placeholderTextColor="#6b7280"
                 />
                 {errors.horaEvento && (
@@ -281,11 +248,13 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 )}
               </View>
 
-              {/* Description */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Descripción <Text style={styles.optional}>(opcional)</Text>
-                </Text>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.labelIcon}>📄</Text>
+                  <Text style={styles.label}>
+                    Descripción <Text style={styles.optional}>(opcional)</Text>
+                  </Text>
+                </View>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.descripcionEvento}
@@ -297,8 +266,23 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 />
               </View>
 
-              {/* Concentration Session Options */}
-              {(getProperty('id_metodo', 'idMetodo') || getProperty('id_album', 'idAlbum')) && (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.labelIcon}>🏷️</Text>
+                  <Text style={styles.label}>
+                    Tipo de Evento <Text style={styles.optional}>(opcional)</Text>
+                  </Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  value={formData.tipoEvento}
+                  onChangeText={(text) => handleInputChange('tipoEvento', text)}
+                  placeholder="Ej: concentracion, normal"
+                  placeholderTextColor="#6b7280"
+                />
+              </View>
+
+              {(formData.tipoEvento === 'concentracion' || event?.tipoEvento === 'concentracion') && (
                 <View style={styles.concentrationSection}>
                   <View style={styles.sectionDivider}>
                     <View style={styles.dividerLine} />
@@ -306,14 +290,13 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                     <View style={styles.dividerLine} />
                   </View>
 
-                  {/* Method Selection */}
                   <TouchableOpacity
                     onPress={handleAddMethod}
                     style={styles.selectionButton}
                   >
                     <View style={styles.selectionButtonContent}>
                       <View style={styles.selectionIcon}>
-                        <Text style={{color: '#60a5fa', fontSize: 20}}>📚</Text>
+                        <BookOpen size={20} color="#60a5fa" />
                       </View>
                       <View style={styles.selectionText}>
                         <Text style={styles.selectionTitle}>
@@ -326,14 +309,13 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                     </View>
                   </TouchableOpacity>
 
-                  {/* Album Selection */}
                   <TouchableOpacity
                     onPress={handleAddAlbum}
                     style={[styles.selectionButton, styles.albumButton]}
                   >
                     <View style={styles.selectionButtonContent}>
                       <View style={[styles.selectionIcon, styles.albumIcon]}>
-                        <Text style={{color: '#a78bfa', fontSize: 20}}>🎵</Text>
+                        <Music size={20} color="#a78bfa" />
                       </View>
                       <View style={styles.selectionText}>
                         <Text style={styles.selectionTitle}>
@@ -346,28 +328,27 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                     </View>
                   </TouchableOpacity>
 
-                  {/* Selected Items Display */}
                   {(selectedMethod || selectedAlbum) && (
                     <View style={styles.selectedItems}>
                       {selectedMethod && (
                         <View style={styles.selectedItem}>
                           <View style={styles.selectedItemIcon}>
-                            <Text style={{color: '#fff', fontSize: 16}}>📚</Text>
+                            <BookOpen size={16} color="#fff" />
                           </View>
                           <Text style={styles.selectedItemText}>{selectedMethod.nombre_metodo}</Text>
                           <TouchableOpacity onPress={handleRemoveMethod}>
-                            <Icon name="close" size={16} color="#9ca3af" />
+                            <X size={16} color="#9ca3af" />
                           </TouchableOpacity>
                         </View>
                       )}
                       {selectedAlbum && (
                         <View style={[styles.selectedItem, styles.selectedAlbumItem]}>
                           <View style={[styles.selectedItemIcon, styles.albumItemIcon]}>
-                            <Text style={{color: '#fff', fontSize: 16}}>🎵</Text>
+                            <Music size={16} color="#fff" />
                           </View>
                           <Text style={styles.selectedItemText}>{selectedAlbum.nombre_album}</Text>
                           <TouchableOpacity onPress={handleRemoveAlbum}>
-                            <Icon name="close" size={16} color="#9ca3af" />
+                            <X size={16} color="#9ca3af" />
                           </TouchableOpacity>
                         </View>
                       )}
@@ -378,7 +359,6 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={onClose}
@@ -396,28 +376,13 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 <Text style={styles.saveButtonText}>Guardando...</Text>
               ) : (
                 <>
-                  <Text style={{color: '#fff', fontSize: 20}}>💾</Text>
+                  <Check size={20} color="#fff" />
                   <Text style={styles.saveButtonText}>Guardar Cambios</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Selection Modals - Temporarily disabled */}
-        {/* <MethodSelectionModal
-          isOpen={isMethodModalOpen}
-          onClose={() => setIsMethodModalOpen(false)}
-          onSelect={handleMethodSelect}
-          selectedMethod={selectedMethod}
-        />
-
-        <AlbumSelectionModal
-          isOpen={isAlbumModalOpen}
-          onClose={() => setIsAlbumModalOpen(false)}
-          onSelect={handleAlbumSelect}
-          selectedAlbum={selectedAlbum}
-        /> */}
       </View>
     </Modal>
   );
@@ -426,18 +391,19 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
   },
   container: {
     width: '100%',
     maxHeight: '90%',
+    backgroundColor: '#1a1a1a',
     borderRadius: 20,
-    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#333333',
+    overflow: 'hidden',
   },
   scrollView: {
     flex: 1,
@@ -448,7 +414,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(59, 130, 246, 0.2)',
+    borderBottomColor: '#333333',
+    backgroundColor: '#0a0a0a',
   },
   headerContent: {
     flexDirection: 'row',
@@ -456,28 +423,37 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconContainer: {
-    padding: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 4,
+    color: '#10B981',
   },
   closeButton: {
-    padding: 8,
-    backgroundColor: 'rgba(107, 114, 128, 0.1)',
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(26, 26, 26, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.2)',
+    borderColor: '#333333',
   },
   form: {
     padding: 24,
@@ -486,38 +462,48 @@ const styles = StyleSheet.create({
   inputGroup: {
     gap: 8,
   },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  labelIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e5e7eb',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   required: {
-    color: '#f87171',
+    color: '#ef4444',
   },
   optional: {
-    color: '#9ca3af',
+    color: '#6b7280',
     fontWeight: 'normal',
   },
   input: {
-    backgroundColor: 'rgba(26, 26, 26, 0.8)',
+    backgroundColor: '#0a0a0a',
     borderWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.5)',
+    borderColor: '#333333',
     borderRadius: 12,
     padding: 16,
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
   },
   inputError: {
-    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderColor: '#ef4444',
     backgroundColor: 'rgba(239, 68, 68, 0.05)',
   },
   errorText: {
-    color: '#f87171',
-    fontSize: 14,
+    color: '#ef4444',
+    fontSize: 12,
     marginTop: 4,
   },
   textArea: {
-    height: 100,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   concentrationSection: {
@@ -599,9 +585,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(167, 139, 250, 0.3)',
   },
   selectedItemIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: 'rgba(59, 130, 246, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -620,7 +606,8 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 24,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(59, 130, 246, 0.2)',
+    borderTopColor: '#333333',
+    backgroundColor: '#0a0a0a',
   },
   button: {
     flex: 1,
@@ -632,17 +619,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cancelButton: {
-    backgroundColor: 'rgba(107, 114, 128, 0.2)',
+    backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.3)',
+    borderColor: '#333333',
   },
   cancelButtonText: {
-    color: '#d1d5db',
+    color: '#9ca3af',
     fontSize: 16,
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#10B981',
   },
   saveButtonText: {
     color: '#fff',
@@ -650,5 +637,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default EditEventModal;

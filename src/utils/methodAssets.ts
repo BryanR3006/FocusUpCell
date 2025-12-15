@@ -42,6 +42,12 @@ export const overrideMethodWithLocalAssets = (method: any): any => {
   return method;
 };
 
+// Función para obtener el color de un método por nombre
+export const getMethodColor = (methodName: string): string => {
+  const assets = LOCAL_METHOD_ASSETS[methodName];
+  return assets ? assets.color : '#000000'; // Color por defecto si no se encuentra
+};
+
 // Función para sobrescribir array de métodos con activos locales
 export const overrideMethodsWithLocalAssets = (methods: any[]): any[] => {
   if (!Array.isArray(methods)) return methods;

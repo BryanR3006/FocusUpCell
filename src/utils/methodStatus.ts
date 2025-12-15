@@ -1,3 +1,5 @@
+import { LOCAL_METHOD_ASSETS } from './methodAssets';
+
 /**
  * Utilidades compartidas para el manejo de estados de métodos de estudio
  * Maneja la lógica de estados y progreso para Pomodoro, Mapas Mentales y Repaso Espaciado
@@ -18,6 +20,18 @@ export interface MethodStatusInfo {
  * Mapeo estandarizado de estados que coincide con la validación del backend
  * Incluye estados para Pomodoro (inglés con guiones bajos) y Mapas Mentales (español con acentos)
  */
+
+// utils/methodStatus.ts (o donde tengas getMethodType)
+export const getPomodoroColorByProgress = (progress: number): string => {
+  if (progress === 60) return '#3B82F6';
+  if (progress === 100) return '#22C55E';
+  return '#FACC15';
+};
+
+export const getMethodColor = (methodName: string): string => {
+  return LOCAL_METHOD_ASSETS[methodName]?.color || '#6366f1';
+};
+
 export const METHOD_STATUS: Record<string, MethodStatusInfo> = {
   // Estados de Pomodoro (inglés con guiones bajos)
   en_progreso: {

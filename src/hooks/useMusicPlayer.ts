@@ -9,5 +9,10 @@ export const useMusicPlayer = () => {
     playAlbum: (songs: Song[], albumInfo: { id_album: number; nombre_album: string }) => {
       return audioContext.playPlaylist(songs, 0, albumInfo);
     },
+    // Expose additional properties needed by Reports.tsx
+    playPlaylist: audioContext.playPlaylist,
+    currentAlbum: audioContext.currentAlbum,
+    isPlaying: audioContext.isPlaying,
+    togglePlayPause: audioContext.togglePlayPause,
   };
 };

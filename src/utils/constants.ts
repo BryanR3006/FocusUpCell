@@ -1,14 +1,14 @@
-export const API_BASE_URL = "http://192.168.1.51:3001/api/v1";
+export const API_BASE_URL = "http://localhost:3001/api/v1";
 
 export const API_ENDPOINTS = {
   // ---------------------------
   // AUTENTICACIÓN
   // ---------------------------
-  AUTH_REQUEST_CODE: "/auth/request-verification-code",
-  AUTH_VERIFY_CODE: "/auth/verify-code",
-  AUTH_REGISTER: "/auth/register", // registro vía auth
-  LOGIN: "/users/login",
-  LOGOUT: "/users/logout",
+  REQUEST_VERIFICATION_CODE: "/auth/request-verification-code",
+  VERIFY_CODE: "/auth/verify-code",
+  REGISTER: "/auth/register",
+  LOGIN: "/auth/login",
+  LOGOUT: "/auth/logout",
 
   // ---------------------------
   // USUARIOS
@@ -71,14 +71,8 @@ export const API_ENDPOINTS = {
   // ---------------------------
   // NOTIFICACIONES
   // ---------------------------
-  NOTIFICATIONS_PREFERENCES: "/notificaciones/preferencias/:idUsuario",
+  NOTIFICATIONS_PREFERENCES: "/notificaciones/preferencias",
   NOTIFICATIONS_SCHEDULED: "/notificaciones/programadas",
-
-  // ---------------------------
-  // INTERESES & DISTRACCIONES
-  // ---------------------------
-  INTERESES: "/intereses",
-  DISTRACCIONES: "/distracciones",
 
 } as const;
 

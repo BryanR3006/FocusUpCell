@@ -365,14 +365,6 @@ class ApiClient {
     return this.get<Benefit[]>(API_ENDPOINTS.BENEFITS);
   }
 
-  async getInterests(): Promise<string[]> {
-    return this.get<string[]>(API_ENDPOINTS.INTERESES);
-  }
-
-  async getDistractions(): Promise<string[]> {
-    return this.get<string[]>(API_ENDPOINTS.DISTRACCIONES);
-  }
-
   // Métodos heredados para compatibilidad hacia atrás
   async getUsers() {
     return this.get(API_ENDPOINTS.USERS);

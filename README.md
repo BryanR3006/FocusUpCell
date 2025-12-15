@@ -5,12 +5,26 @@
 **FocusUpCell** es una aplicación móvil desarrollada con **React Native + Expo** que implementa múltiples técnicas de estudio para mejorar la productividad y concentración del usuario. La aplicación permite a los usuarios ejecutar sesiones de Pomodoro, Mapas Mentales, Repaso Espaciado, Práctica Activa, Método Feynman, y Método Cornell, con seguimiento de progreso y análisis de desempeño.
 
 **Stack Tecnológico:**
-- Frontend: React Native 0.81.5, Expo 54.0.23
-- Navegación: React Navigation 7.1.22
+
+- Frontend: React Native 0.81.5, React 19.1.0, Expo ~54.0.25
+- Navegación: React Navigation 7.1.25 - 7.6.12
 - State Management: Context API + AsyncStorage
-- HTTP Client: Axios/Fetch API
-- UI Components: Lucide React Native, React Native Vector Icons
+- HTTP Client: Axios ^1.13.2 / Fetch API
+- UI Components: Lucide React Native ^0.553.0, React Native Vector Icons ^10.3.0, @expo/vector-icons ^15.0.3
+- Audio: Expo AV ~16.0.8, React Native Track Player ^4.1.2
+- Animations: React Native Reanimated ^4.1.5
+- Gestures: React Native Gesture Handler ~2.28.0
+- Date/Time Picker: @react-native-community/datetimepicker 8.4.4
+- Slider: @react-native-community/slider ^5.1.1
+- Picker: @react-native-picker/picker 2.11.1
+- Safe Area: React Native Safe Area Context ^5.6.2
+- Screens: React Native Screens ~4.16.0
+- SVG: React Native SVG 15.12.1
+- Linear Gradient: React Native Linear Gradient ^2.8.3, Expo Linear Gradient ~15.0.7
+- Status Bar: Expo Status Bar ~3.0.8
 - Styling: StyleSheet (React Native)
+- TypeScript: ~5.9.2
+- Testing: Jest, React Native Testing Library
 - Backend API: RESTful API (http://localhost:3001/api/v1)
 
 ---
@@ -22,6 +36,7 @@ src/
 ├── pages/               # Pantallas/Vistas principales
 │   ├── Login.tsx                       # Autenticación
 │   ├── Register.tsx                    # Registro de usuario
+│   ├── RegisterStep2.tsx               # Segundo paso del registro
 │   ├── Home.tsx                        # Dashboard principal
 │   ├── profilpage.tsx                  # Gestión de perfil
 │   ├── PomodoroExecutionView.tsx       # Ejecución de sesiones Pomodoro
@@ -31,29 +46,98 @@ src/
 │   ├── ForgotPassword.tsx              # Recuperación de contraseña
 │   ├── ForgotPasswordCode.tsx          # Validación de código
 │   ├── ForgotPasswordReset.tsx         # Reset de contraseña
-│   └── Confirmation.tsx                # Confirmación de email
+│   ├── Confirmation.tsx                # Confirmación de email
+│   ├── ActiveRecallIntroView.tsx       # Introducción a Práctica Activa
+│   ├── ActiveRecallStepsView.tsx       # Pasos de Práctica Activa
+│   ├── CornellIntroView.tsx            # Introducción a Método Cornell
+│   ├── CornellStepsView.tsx            # Pasos de Método Cornell
+│   ├── FeynmanIntroView.tsx            # Introducción a Método Feynman
+│   ├── FeynmanStepsView.tsx            # Pasos de Método Feynman
+│   ├── MindMapsInfoPage.tsx            # Información de Mapas Mentales
+│   ├── MindMapsStepsPage.tsx           # Pasos de Mapas Mentales
+│   ├── SpacedRepetitionIntroView.tsx   # Introducción a Repaso Espaciado
+│   ├── SpacedRepetitionStepsView.tsx   # Pasos de Repaso Espaciado
+│   ├── EventsPage.tsx                  # Gestión de eventos
+│   ├── CreateEventModal.tsx            # Modal para crear eventos
+│   ├── EditEventModal.tsx              # Modal para editar eventos
+│   ├── MusicAlbums.tsx                 # Lista de álbumes de música
+│   ├── MusicSongs.tsx                  # Lista de canciones
+│   ├── Notifications.tsx               # Configuración de notificaciones
+│   ├── Reports.tsx                     # Reportes de sesiones y métodos
+│   └── sessions/
+│       └── StartSession.tsx            # Inicio de sesiones de concentración
 │
 ├── contexts/            # Estado global de la aplicación
-│   └── AuthContext.tsx                 # Gestión de autenticación
+│   ├── AuthContext.tsx                 # Gestión de autenticación
+│   ├── AudioContext.tsx                # Gestión de audio
+│   ├── MusicPlayerContext.tsx          # Reproductor de música
+│   └── ConcentrationSessionProvider.tsx # Proveedor de sesiones
+│
+├── components/          # Componentes modulares
+│   ├── AlbumSelectionModal.tsx         # Modal de selección de álbumes
+│   └── MethodSelectionModal.tsx        # Modal de selección de métodos
+│
+├── hooks/               # Hooks personalizados
+│   ├── useEvents.ts                    # Hook para gestión de eventos
+│   ├── useMusicPlayer.ts               # Hook para reproductor de música
+│   └── useNotifications.ts             # Hook para notificaciones
+│
+├── providers/           # Proveedores de contexto
+│   └── ConcentrationSessionProvider.tsx # Proveedor de sesiones
+│
+├── services/            # Servicios de negocio
+│   ├── audioService.ts                 # Servicio de audio
+│   ├── reportsService.ts               # Servicio de reportes
+│   └── sessionService.ts               # Servicio de sesiones
 │
 ├── clientes/            # HTTP Clients
-│   └── apiClient.ts                    # Cliente API REST
+│   ├── apiClient.ts                    # Cliente API REST
+│   └── authBridge.ts                   # Puente de autenticación
 │
 ├── types/               # TypeScript Interfaces & Types
 │   ├── user.ts                         # Interfaces de usuario
 │   ├── api.ts                          # Interfaces de API
-│   └── navigation.ts                   # Tipos de navegación
+│   ├── navigation.ts                   # Tipos de navegación
+│   ├── event.ts                        # Interfaces de eventos
+│   ├── events.ts                       # Tipos de eventos
+│   ├── music.ts                        # Interfaces de música
+│   ├── notification.ts                 # Interfaces de notificaciones
+│   ├── session.ts                      # Interfaces de sesiones
+│   └── studyMethod.ts                  # Interfaces de métodos de estudio
 │
 ├── ui/                  # Componentes reutilizables
 │   ├── Sidebar.tsx                     # Menú lateral con navegación
 │   ├── ProgressCircle.tsx              # Circulo de progreso
 │   ├── card.tsx                        # Tarjeta genérica
-│   └── timer.tsx                       # Componente temporizador
+│   ├── timer.tsx                       # Componente temporizador
+│   ├── CompactMusicPlayer.tsx          # Reproductor compacto
+│   ├── CountdownOverlay.tsx            # Overlay de cuenta regresiva
+│   ├── EventCard.tsx                   # Tarjeta de evento
+│   ├── FinishLaterModal.tsx            # Modal de finalizar después
+│   ├── FirstLoginModal.tsx             # Modal de primer login
+│   ├── NotificationToggle.tsx          # Toggle de notificaciones
+│   └── PageLayout.tsx                  # Layout de página
 │
 └── utils/               # Funciones y constantes
     ├── constants.ts                    # Endpoints y configuración API
     ├── methodStatus.ts                 # Lógica de estados de métodos
-    └── methodAssets.ts                 # Mapeo de activos locales
+    ├── methodAssets.ts                 # Mapeo de activos locales
+    ├── validationUtils.ts              # Utilidades de validación
+    ├── broadcastChannel.ts             # Canal de broadcast
+    ├── eventsApi.ts                    # API de eventos
+    ├── musicApi.ts                     # API de música
+    ├── musicUtils.ts                   # Utilidades de música
+    ├── notificationsApi.ts             # API de notificaciones
+    └── sessionMappers.ts               # Mapeadores de sesiones
+```
+
+**Archivos de Pruebas:**
+
+```
+__tests__/
+├── apiClient.spec.ts                   # Pruebas del cliente API
+├── audioService.test.ts                # Pruebas del servicio de audio
+└── sessionService.test.ts              # Pruebas del servicio de sesiones
 ```
 
 ---
@@ -107,6 +191,7 @@ Actualizar estado local + reanudar sesión
 ### 4. **Gestión de Estado**
 
 **AuthContext** mantiene:
+
 - `isAuthenticated`: boolean
 - `user`: User object
 - `loading`: boolean
@@ -114,6 +199,7 @@ Actualizar estado local + reanudar sesión
 - `logout()`: async function
 
 **Storage Local (AsyncStorage):**
+
 - `token`: JWT token
 - `userData`: JSON stringificado del usuario
 - Sesiones pausadas (en construcción)
@@ -125,6 +211,7 @@ Actualizar estado local + reanudar sesión
 ### ✅ Implementadas
 
 1. **Autenticación**
+
    - Login con email/contraseña
    - Registro de nuevos usuarios
    - Recuperación de contraseña (3 pasos)
@@ -132,6 +219,7 @@ Actualizar estado local + reanudar sesión
    - JWT Token storage
 
 2. **Dashboard Principal**
+
    - Visualización de métodos activos
    - Estadísticas de progreso (sesiones, métodos completados)
    - Álbumes de música para concentración
@@ -139,6 +227,7 @@ Actualizar estado local + reanudar sesión
    - Refresh pull-to-refresh
 
 3. **Métodos de Estudio**
+
    - **Pomodoro**: Timer 25/5, pausar/reanudar, skip breaks
    - **Mapas Mentales**: Soporte para progreso en pasos (20%, 40%, 60%, 80%, 100%)
    - **Repaso Espaciado**: Sistema de repetición con algoritmo de espaciado
@@ -147,6 +236,7 @@ Actualizar estado local + reanudar sesión
    - **Método Cornell**: Sistema de notas estructurado
 
 4. **Perfil de Usuario**
+
    - Edición de datos (nombre, país, género, fecha de nacimiento)
    - Cambio de contraseña
    - Selección de distracciones comunes (2 principales)
@@ -155,6 +245,7 @@ Actualizar estado local + reanudar sesión
    - Eliminación de cuenta
 
 5. **Sidebar de Navegación**
+
    - Menú animado con transiciones
    - Submenú de "Herramientas"
    - Logout button
@@ -169,27 +260,32 @@ Actualizar estado local + reanudar sesión
 ### 🔧 En Desarrollo / Necesita Mejoras
 
 1. **Sincronización de Sesiones**
+
    - ❌ No se guardan sesiones pausadas localmente
    - ❌ No hay recuperación automática de sesiones incompletas
    - ⚠️ El campo `resumeProgress` en PomodoroExecute no se utiliza
 
 2. **API Client**
+
    - ⚠️ Métodos incompletos (falta PUT, DELETE, PATCH)
    - ⚠️ No hay manejo de autenticación en headers (Bearer token)
    - ⚠️ Sin interceptores de error global
    - ❌ Base URL hardcodeada (localhost:3001)
 
 3. **Validaciones**
+
    - ⚠️ Validación de email débil en Login
    - ❌ No hay validación de contraseña fuerte en Register
    - ❌ No hay confirmación de email post-registro
 
 4. **Manejo de Errores**
+
    - ⚠️ Mensajes de error genéricos
    - ❌ Sin retry logic para fallos de red
    - ❌ Sin timeout configuration en requests
 
 5. **TypeScript**
+
    - ⚠️ Tipos genéricos (any en muchos lugares)
    - ⚠️ Falta completa tipificación en StudyMethodsLibraryPage.tsx
    - ⚠️ AuthContext necesita tipos genéricos
@@ -204,6 +300,7 @@ Actualizar estado local + reanudar sesión
 ## ⚠️ Problemas Conocidos y Fallos
 
 ### 1. **Autenticación**
+
 ```
 ❌ PROBLEMA: Login espera "contrasena" pero Register usa "password"
    - Inconsistencia en nombres de propiedades
@@ -221,6 +318,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 2. **API Client**
+
 ```
 ❌ PROBLEMA: Falta autenticación en headers
    - No se envía el token en requests
@@ -241,6 +339,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 3. **Pomodoro Execution**
+
 ```
 ⚠️ PROBLEMA: El progreso no se actualiza visualmente en tiempo real
    - Timer funciona pero UI puede no reflejar cambios
@@ -256,6 +355,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 4. **Métodos de Estudio**
+
 ```
 ❌ PROBLEMA: StudyMethodsLibraryPage.tsx sin tipificación TypeScript
    - Archivo con tipos implícitos (any everywhere)
@@ -271,6 +371,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 5. **Perfil de Usuario**
+
 ```
 ❌ PROBLEMA: ProfilePage es React Web, no React Native
    - Importa componentes de Headless UI (React)
@@ -287,6 +388,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 6. **Validaciones**
+
 ```
 ❌ PROBLEMA: Falta archivo validationUtils.ts
    - ProfilePage lo importa pero no existe
@@ -298,6 +400,7 @@ Actualizar estado local + reanudar sesión
 ```
 
 ### 7. **Navegación**
+
 ```
 ⚠️ PROBLEMA: RootStackParamList incompleta
    - Faltan rutas: MindMapsIntro, SpacedRepetitionIntro, etc.
@@ -314,6 +417,7 @@ Actualizar estado local + reanudar sesión
 **Base URL:** `http://localhost:3001/api/v1`
 
 ### Autenticación
+
 ```
 POST /users/login
 POST /users/register
@@ -323,6 +427,7 @@ POST /users/reset-password-with-code
 ```
 
 ### Usuarios
+
 ```
 GET  /users
 GET  /users/profile
@@ -331,12 +436,14 @@ DELETE /users/{id}
 ```
 
 ### Métodos de Estudio
+
 ```
 GET /metodos-estudio
 GET /metodos-estudio/{id}
 ```
 
 ### Sesiones
+
 ```
 POST /sesiones
 PUT /sesiones/{id}
@@ -345,6 +452,7 @@ GET /sesiones/{id}
 ```
 
 ### Reportes
+
 ```
 GET /reports
 GET /reports/active-methods
@@ -359,11 +467,13 @@ GET /reports/sessions
 ### Priority 1: Críticos (Bloquean funcionalidad)
 
 #### 1.1 Reescribir ProfilePage en React Native ⭐⭐⭐⭐⭐
+
 **Fichero:** `src/pages/profilpage.tsx`
 
 **Problema:** Archivo está en React, no React Native
 
 **Solución:**
+
 ```tsx
 // Cambiar de:
 import { Listbox } from "@headlessui/react";
@@ -375,6 +485,7 @@ import { Alert } from "react-native";
 ```
 
 **Pasos:**
+
 1. Convertir HTML a React Native components
 2. Usar `Picker` de `@react-native-picker/picker` en lugar de `Listbox`
 3. Reemplazar `Swal` con `Alert.alert()`
@@ -385,18 +496,20 @@ import { Alert } from "react-native";
 ---
 
 #### 1.2 Completar ApiClient con métodos HTTP ⭐⭐⭐⭐
+
 **Fichero:** `src/clientes/apiClient.ts`
 
 **Problema:** Falta PUT, DELETE, PATCH y autenticación
 
 **Solución:**
+
 ```typescript
 // Agregar a ApiClient class:
 
 async put(endpoint: string, body: any) {
-  return this.request(endpoint, { 
-    method: 'PUT', 
-    body: JSON.stringify(body) 
+  return this.request(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body)
   });
 }
 
@@ -405,9 +518,9 @@ async delete(endpoint: string) {
 }
 
 async patch(endpoint: string, body: any) {
-  return this.request(endpoint, { 
-    method: 'PATCH', 
-    body: JSON.stringify(body) 
+  return this.request(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
   });
 }
 
@@ -424,13 +537,18 @@ private async getAuthHeader() {
 ---
 
 #### 1.3 Crear archivo validationUtils.ts ⭐⭐⭐
+
 **Fichero:** `src/utils/validationUtils.ts` (Falta crear)
 
 **Funciones requeridas por profilpage.tsx:**
+
 ```typescript
-export function validatePassword(password: string): string | null
-export function validateDateOfBirth(date: Date): string | null
-export function checkUsernameAvailability(username: string, currentUsername: string): Promise<string | null>
+export function validatePassword(password: string): string | null;
+export function validateDateOfBirth(date: Date): string | null;
+export function checkUsernameAvailability(
+  username: string,
+  currentUsername: string
+): Promise<string | null>;
 ```
 
 **Estimado:** 1 hora
@@ -440,11 +558,14 @@ export function checkUsernameAvailability(username: string, currentUsername: str
 ### Priority 2: Altos (Afectan múltiples funciones)
 
 #### 2.1 Implementar persistencia de sesiones pausadas ⭐⭐⭐⭐
-**Ficheros:** 
+
+**Ficheros:**
+
 - `src/pages/PomodoroExecutionView.tsx`
 - `src/utils/sessionStorage.ts` (Crear)
 
 **Lógica:**
+
 ```typescript
 // Guardar sesión pausada
 await saveSessionToLocalStorage({
@@ -452,7 +573,7 @@ await saveSessionToLocalStorage({
   progress,
   elapsedTime,
   startTime,
-  sessionId
+  sessionId,
 });
 
 // Recuperar al reiniciar
@@ -464,9 +585,11 @@ const resumedSession = await getSessionFromLocalStorage();
 ---
 
 #### 2.2 Actualizar tipos y completar RootStackParamList ⭐⭐⭐
+
 **Fichero:** `src/types/navigation.ts`
 
 **Agregar:**
+
 ```typescript
 export type RootStackParamList = {
   // ... existentes
@@ -483,13 +606,15 @@ export type RootStackParamList = {
 ---
 
 #### 2.3 Implementar interceptor de Bearer Token ⭐⭐⭐
+
 **Fichero:** `src/clientes/apiClient.ts`
 
 **Modificar method `request()`:**
+
 ```typescript
 private async request(endpoint: string, options: RequestInit = {}) {
   const token = await AsyncStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -507,16 +632,20 @@ private async request(endpoint: string, options: RequestInit = {}) {
 ### Priority 3: Medios (Mejoran UX)
 
 #### 3.1 Refactorizar methodStatus.ts ⭐⭐
+
 **Fichero:** `src/utils/methodStatus.ts`
 
 **Problema:** Código repetitivo para 6 métodos
 
 **Solución:**
+
 ```typescript
 // Crear factory pattern:
 export const createStatusHelper = (methodType: MethodType) => ({
-  getStatusByProgress: (progress) => METHOD_CONFIG[methodType].getStatus(progress),
-  getColorByProgress: (progress) => getStatusColor(METHOD_CONFIG[methodType].getStatus(progress)),
+  getStatusByProgress: (progress) =>
+    METHOD_CONFIG[methodType].getStatus(progress),
+  getColorByProgress: (progress) =>
+    getStatusColor(METHOD_CONFIG[methodType].getStatus(progress)),
   // ...
 });
 ```
@@ -526,9 +655,11 @@ export const createStatusHelper = (methodType: MethodType) => ({
 ---
 
 #### 3.2 Agregar validaciones en Register ⭐⭐
+
 **Fichero:** `src/pages/Register.tsx`
 
 **Validaciones a agregar:**
+
 - Contraseña mínimo 8 caracteres, 1 mayúscula, 1 número, 1 especial
 - Email válido
 - Fecha de nacimiento >= 13 años
@@ -539,6 +670,7 @@ export const createStatusHelper = (methodType: MethodType) => ({
 ---
 
 #### 3.3 Implementar retry logic para fallos de red ⭐⭐
+
 **Fichero:** `src/clientes/apiClient.ts`
 
 ```typescript
@@ -561,6 +693,7 @@ private async requestWithRetry(endpoint: string, options, retries = 3) {
 ### Priority 4: Bajos (Mejoras de código)
 
 #### 4.1 Agregar TypeScript strict mode ⭐
+
 **Fichero:** `tsconfig.json`
 
 ```json
@@ -578,12 +711,23 @@ private async requestWithRetry(endpoint: string, options, retries = 3) {
 ---
 
 #### 4.2 Optimizar re-renders en Home.tsx ⭐
+
 **Fichero:** `src/pages/Home.tsx`
 
 ```typescript
-const loadUserData = useCallback(async () => { /* ... */ }, []);
+const loadUserData = useCallback(async () => {
+  /* ... */
+}, []);
 
-const ExpandableCard = React.memo(({ /* props */ }) => { /* ... */ });
+const ExpandableCard = React.memo(
+  (
+    {
+      /* props */
+    }
+  ) => {
+    /* ... */
+  }
+);
 ```
 
 **Estimado:** 1 hora
@@ -591,6 +735,7 @@ const ExpandableCard = React.memo(({ /* props */ }) => { /* ... */ });
 ---
 
 #### 4.3 Crear archivo para constantes de validación ⭐
+
 **Fichero:** `src/utils/validationConstants.ts`
 
 ```typescript
@@ -598,7 +743,7 @@ export const PASSWORD_REQUIREMENTS = {
   minLength: 8,
   hasUppercase: true,
   hasNumber: true,
-  hasSpecial: true
+  hasSpecial: true,
 };
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -612,6 +757,7 @@ export const MIN_AGE = 13;
 ## 📦 Instalación y Ejecución
 
 ### Requisitos
+
 - Node.js 18+
 - npm o yarn
 - Expo CLI: `npm install -g expo-cli`
@@ -636,6 +782,7 @@ npm run web        # Web Browser
 ```
 
 ### Variables de Entorno
+
 ```
 # .env (crear)
 API_BASE_URL=http://localhost:3001/api/v1
@@ -647,11 +794,13 @@ DEBUG_MODE=true
 ## 🧪 Testing (Recomendado)
 
 **Frameworks sugeridos:**
+
 - Jest
 - React Native Testing Library
 - Detox (E2E)
 
 **Archivo de configuración:**
+
 ```json
 // jest.config.js
 module.exports = {
@@ -666,6 +815,7 @@ module.exports = {
 ## 📚 Documentación de Componentes Principales
 
 ### AuthContext
+
 ```tsx
 const { user, isAuthenticated, login, logout, loading } = useAuth();
 
@@ -677,15 +827,21 @@ await logout();
 ```
 
 ### ApiClient
+
 ```tsx
-const resp = await apiClient.post('/endpoint', payload);
-const data = await apiClient.get('/endpoint');
-await apiClient.put('/endpoint/:id', payload);
+const resp = await apiClient.post("/endpoint", payload);
+const data = await apiClient.get("/endpoint");
+await apiClient.put("/endpoint/:id", payload);
 ```
 
 ### Method Status Helper
+
 ```tsx
-import { getStatusColor, getStatusLabel, getMindMapsStatusByProgress } from '../utils/methodStatus';
+import {
+  getStatusColor,
+  getStatusLabel,
+  getMindMapsStatusByProgress,
+} from "../utils/methodStatus";
 
 const status = getMindMapsStatusByProgress(60); // "Casi_terminando"
 const color = getStatusColor(status); // "#3B82F6"
@@ -715,17 +871,18 @@ Text Secondary: #9AA7C7
 
 ```javascript
 // En cualquier archivo
-console.log('DEBUG:', value);
+console.log("DEBUG:", value);
 
 // Ver AsyncStorage
-await AsyncStorage.multiGet(['token', 'userData']).then(console.log);
+await AsyncStorage.multiGet(["token", "userData"]).then(console.log);
 
 // Verificar estado de contexto
 const { user } = useAuth();
-console.log('Current user:', user);
+console.log("Current user:", user);
 ```
 
 ### React Native DevTools
+
 ```bash
 # Abrir menu de debug
 Ctrl+M (Android) o Cmd+D (iOS)
@@ -751,6 +908,7 @@ Ctrl+M (Android) o Cmd+D (iOS)
 ## 🤝 Contacto y Soporte
 
 Para preguntas sobre la arquitectura o implementación:
+
 - Revisar comentarios en el código
 - Consultar los tipos en `src/types/`
 - Verificar los ejemplos en cada pantalla

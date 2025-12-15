@@ -16,11 +16,13 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../ui/Sidebar';
 import { API_ENDPOINTS } from '../utils/constants';
 import { apiClient } from '../clientes/apiClient';
+import { ApiResponse, StudyMethod as ApiStudyMethod, MethodReport, SessionReport } from '../types/api';
 import {
   BookOpen,
   Calendar,
@@ -40,6 +42,10 @@ import {
   Brain,
   Target as TargetIcon,
   Timer,
+  Check,
+  Coffee,
+  RotateCcw,
+  FileText,
 } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -108,8 +114,8 @@ interface UserProgress {
 
 // ===== CONSTANTES Y CONFIGURACIÓN =====
 const COLORS = {
-  bgDark: '#0B1020',
-  card: '#0F1724',
+  bgDark: '#0b0b0b',
+  card: '#0f0f10',
   surface: '#1A2536',
   primary: '#8B5CF6',
   primaryLight: '#A78BFA',
@@ -121,8 +127,8 @@ const COLORS = {
   warningLight: '#FBBF24',
   error: '#EF4444',
   errorLight: '#F87171',
-  textPrimary: '#F1F5F9',
-  textSecondary: '#94A3B8',
+  textPrimary: '#E6EEF8',
+  textSecondary: '#9CA3AF',
   textMuted: '#64748B',
   info: '#3B82F6',
   purple: '#8B5CF6',
@@ -131,15 +137,66 @@ const COLORS = {
 };
 
 const METHOD_COLORS = [
-  COLORS.primary,
-  COLORS.secondary,
-  COLORS.success,
-  COLORS.warning,
-  COLORS.info,
-  COLORS.pink,
-  COLORS.indigo,
-  COLORS.purple,
+  "#8B5CF6", // Pomodoro
+  "#10B981", // Mapas Mentales
+  "#7C3AED", // Repaso Espaciado
+  "#059669", // Práctica Activa
+  "#F59E0B", // Método Feynman
+  "#2563EB", // Método Cornell
 ];
+
+const getEventTypeColor = (tipo: string) => {
+  switch (tipo) {
+    case 'sesion_estudio':
+      return METHOD_COLORS[0]; // Rojo para estudio
+    case 'descanso':
+      return METHOD_COLORS[1]; // Verde para descanso
+    case 'repaso':
+      return METHOD_COLORS[2]; // Morado para repaso
+    case 'evaluacion':
+      return METHOD_COLORS[3]; // Verde claro para evaluación
+    default:
+      return COLORS.primary;
+  }
+};
+
+const getEventTypeIcon = (tipo: string) => {
+  switch (tipo) {
+    case 'sesion_estudio':
+      return BookOpen;
+    case 'descanso':
+      return Coffee;
+    case 'repaso':
+      return RotateCcw;
+    case 'evaluacion':
+      return FileText;
+    default:
+      return Calendar;
+  }
+};
+
+// ===== MAPEOS DE IMÁGENES =====
+const METHOD_IMAGES: Record<string, any> = {
+  'Método Pomodoro': require('../img/MetodoPomodoro.png'),
+  'Mapas Mentales': require('../img/MapasMentales.png'),
+  'Repaso Espaciado': require('../img/RepasoEspaciado.png'),
+  'Práctica Activa': require('../img/PracticaActiva.png'),
+  'Método Feynman': require('../img/Feynman.png'),
+  'Método Cornell': require('../img/Cornell.png'),
+};
+
+const MUSIC_IMAGES: Record<string, any> = {
+  'Lofi': require('../img/Album_Lofi.png'),
+  'Naturaleza': require('../img/Album_Naturaleza.png'),
+  'Relajante': require('../img/Album_Instrumental.png'),
+  'Relajantes': require('../img/Album_Instrumental.png'),
+  'Instrumental': require('../img/Album_Instrumental.png'),
+  'Hip Hop': require('../img/Album_Lofi.png'),
+  'Ambient': require('../img/Album_Naturaleza.png'),
+  'Clásica': require('../img/Album_Instrumental.png'),
+  'Jazz': require('../img/Album_Instrumental.png'),
+  'Electrónica': require('../img/Album_Lofi.png'),
+};
 
 // ===== FUNCIONES HELPER =====
 const getMethodIcon = (iconName?: string) => {
@@ -159,12 +216,50 @@ const getMethodIcon = (iconName?: string) => {
   return icons[iconName || 'book-open'] || BookOpen;
 };
 
-const getMethodColor = (index: number, methodId?: number) => {
-  if (methodId) {
-    return METHOD_COLORS[methodId % METHOD_COLORS.length];
-  }
-  return METHOD_COLORS[index % METHOD_COLORS.length];
+const mapStudyMethod = (apiData: any, userProgressData: any[] = []): StudyMethod => {
+  // Encontrar el progreso del usuario para este método
+  const userMethod = userProgressData.find(item =>
+    item.idMetodo === apiData.id ||
+    item.metodo_id === apiData.id ||
+    item.metodoId === apiData.id ||
+    item.methodId === apiData.id
+  );
+
+  const progreso = userMethod?.progreso || userMethod?.progress || 0;
+
+  return {
+    id: apiData.id || Math.random(),
+    titulo: apiData.titulo || apiData.nombre || apiData.title || 'Método de Estudio',
+    descripcion: apiData.descripcion || apiData.description || 'Descripción no disponible',
+    icono: apiData.icono || apiData.icon || 'book-open',
+    color: apiData.color || getMethodColor(0, Number(apiData.id)),
+    progreso: Number(progreso),
+    estado: progreso === 100 ? 'completado' :
+           progreso > 0 ? 'activo' : 'pausado',
+    duracion_recomendada: apiData.duracion_recomendada || apiData.duration,
+    dificultad: apiData.dificultad || apiData.difficulty || 'medio'
+  };
 };
+
+const getMethodColor = (index: number, methodId?: number) => {
+   if (methodId) {
+     return METHOD_COLORS[methodId % METHOD_COLORS.length];
+   }
+   return METHOD_COLORS[index % METHOD_COLORS.length];
+ };
+
+const getMethodColorByName = (methodName?: string) => {
+   const methodMap: Record<string, number> = {
+     'Pomodoro': 0,
+     'Mapas Mentales': 1,
+     'Repaso Espaciado': 2,
+     'Práctica Activa': 3,
+     'Feynman': 4,
+     'Cornell': 5,
+   };
+   const index = methodMap[methodName || ''] || 0;
+   return METHOD_COLORS[index];
+ };
 
 const getStatusColor = (estado?: string) => {
   switch (estado?.toLowerCase()) {
@@ -221,25 +316,110 @@ const formatDuration = (minutes: number) => {
 const formatStudyTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
   return `${minutes}m`;
 };
 
-// ===== FUNCIÓN PARA EXTRAER DATOS DE RESPUESTAS DE API =====
-const extractDataFromResponse = (response: any) => {
-  // Manejar diferentes formatos de respuesta
-  if (response.data && Array.isArray(response.data)) {
-    return response.data;
-  } else if (Array.isArray(response)) {
-    return response;
-  } else if (response.data) {
-    return [response.data];
-  } else if (response.result) {
-    return Array.isArray(response.result) ? response.result : [response.result];
+const formatTime = (minutes: number): string => {
+  const totalSeconds = minutes * 60;
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const formatDateShort = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
+
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short'
+    });
+  } catch {
+    return '';
   }
+};
+
+// ===== COMPONENTE BARRA DE PROGRESO CIRCULAR =====
+const CircularProgressBar = ({ progress, size = 60, strokeWidth = 6, color }: any) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        {/* Fondo */}
+        <Circle
+          stroke="rgba(255,255,255,0.1)"
+          fill="none"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+        />
+        {/* Progreso */}
+        <Circle
+          stroke={color}
+          fill="none"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <View style={styles.progressTextContainer}>
+        <Text style={[styles.circularProgressText, { color }]}>
+          {progress}%
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+// ===== FUNCIÓN PARA EXTRAER DATOS DE RESPUESTAS DE API =====
+const extractDataFromResponse = (response: any): any[] => {
+  // Caso 1: Respuesta con campo 'data' que es array
+  if (response && response.data !== undefined) {
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    // Si data es objeto, buscar arrays dentro
+    if (typeof response.data === 'object') {
+      for (const key in response.data) {
+        if (Array.isArray(response.data[key])) {
+          return response.data[key];
+        }
+      }
+    }
+  }
+
+  // Caso 2: La respuesta es directamente un array
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  // Caso 3: Respuesta con campo 'result'
+  if (response && response.result && Array.isArray(response.result)) {
+    return response.result;
+  }
+
   return [];
 };
 
@@ -299,7 +479,7 @@ const AnimatedDropdown = ({ open, children, maxHeight = 400 }: any) => {
       toValue: open ? 1 : 0,
       duration: 300,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: false,
+      useNativeDriver: false, // ← CAMBIAR de true a false para compatibilidad con React Native Web
     }).start();
   }, [open]);
 
@@ -417,31 +597,38 @@ const Home: React.FC = () => {
   };
 
   // ===== FUNCIONES DE API =====
-  const fetchStudyMethods = async () => {
+  const fetchStudyMethods = async (): Promise<StudyMethod[]> => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.STUDY_METHODS);
       const methods = extractDataFromResponse(response);
-      
+
       // Obtener también los métodos activos del usuario
       const activeMethodsResponse = await apiClient.get(API_ENDPOINTS.USER_METHODS_REPORTS);
       const activeMethods = extractDataFromResponse(activeMethodsResponse);
-      
+
       return methods.map((method: any, index: number) => {
-        const activeMethod = activeMethods.find((am: any) => am.metodo_id === method.id);
-        const progreso = activeMethod?.progreso || 0;
-        
+        // CORREGIR: Buscar por id_metodo, no idMetodo
+        const userMethod = activeMethods.find((am: any) =>
+          am.id_metodo === method.id_metodo ||  // ← API usa id_metodo
+          am.metodo_id === method.id_metodo
+        );
+
+        const progreso = userMethod?.progreso || 0;
+
         return {
-          id: method.id,
-          titulo: method.nombre || method.titulo || 'Método sin nombre',
-          descripcion: method.descripcion || method.descripcion_corta || 'Sin descripción',
+          // CORREGIR: Usar id_metodo, no id
+          id: method.id_metodo,
+          // CORREGIR: Usar nombre_metodo, no nombre
+          titulo: method.nombre_metodo,
+          descripcion: method.descripcion,
           icono: method.icono || 'book-open',
-          color: method.color || getMethodColor(index, Number(method.id)),
-          progreso: progreso,
-          estado: progreso === 100 ? 'completado' : 
-                 progreso > 0 ? 'activo' : 'pausado',
+          color: method.color || getMethodColor(index, method.id_metodo),
+          progreso: Number(progreso),
+          estado: progreso === 100 ? 'completado' :
+                  progreso > 0 ? 'activo' : 'pausado',
           duracion_recomendada: method.duracion_recomendada,
-          dificultad: method.dificultad,
-        };
+          dificultad: method.dificultad || 'medio',
+        } as StudyMethod;
       });
     } catch (error) {
       console.error('Error fetching study methods:', error);
@@ -449,17 +636,18 @@ const Home: React.FC = () => {
     }
   };
 
-  const fetchMusicAlbums = async () => {
+  const fetchMusicAlbums = async (): Promise<MusicAlbum[]> => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.MUSIC_ALBUMS);
       const albums = extractDataFromResponse(response);
-      
+
       return albums.map((album: any) => ({
-        id: album.id,
-        titulo: album.nombre || album.titulo || 'Álbum sin nombre',
+        id: album.id_album,
+        // CORREGIR: Usar nombre_album, no titulo
+        titulo: album.nombre_album,
         artista: album.artista || 'Artista desconocido',
         genero: album.genero || 'Sin género',
-        portada_url: album.portada_url || album.cover_url,
+        portada_url: album.portada_url,
         duracion_total: album.duracion_total,
       }));
     } catch (error) {
@@ -468,79 +656,88 @@ const Home: React.FC = () => {
     }
   };
 
-  const fetchRecentSessions = async () => {
+  const fetchRecentSessions = async (): Promise<StudySession[]> => {
     try {
-      // Primero intentar obtener sesiones del endpoint de reportes
       const response = await apiClient.get(API_ENDPOINTS.USER_SESSIONS_REPORTS);
       const sessions = extractDataFromResponse(response);
-      
-      // Si no hay sesiones en reportes, intentar obtener del endpoint de sesiones
-      if (sessions.length === 0) {
-        try {
-          const sessionsResponse = await apiClient.get(API_ENDPOINTS.SESSIONS);
-          const sessionsData = extractDataFromResponse(sessionsResponse);
-          return sessionsData.map((session: any) => ({
-            id: session.id,
-            titulo: session.titulo || 'Sesión sin título',
-            metodo: session.metodo_nombre || session.metodo || 'Sin método',
-            duracion_minutos: session.duracion_minutos || session.duracion || 0,
-            fecha_inicio: session.fecha_inicio || session.created_at,
-            estado: session.estado || 'completada',
-            concentracion: session.concentracion || session.concentration || 75,
-            productividad: session.productividad,
-            notas: session.notas,
-          }));
-        } catch (sessionsError) {
-          console.error('Error fetching sessions:', sessionsError);
-          return [];
-        }
-      }
-      
-      return sessions.map((session: any) => ({
-        id: session.id,
-        titulo: session.titulo || 'Sesión sin título',
-        metodo: session.metodo_nombre || session.metodo || 'Sin método',
-        duracion_minutos: session.duracion_minutos || session.duracion || 0,
-        fecha_inicio: session.fecha_inicio || session.created_at,
-        estado: session.estado || 'completada',
-        concentracion: session.concentracion || 75,
-        productividad: session.productividad,
-        notas: session.notas,
-      }));
+
+      return sessions.map((session: any) => {
+        // CORREGIR: Convertir tiempo_total (ms) a minutos
+        const tiempoTotalMs = session.tiempo_total || 0;
+        const duracionMinutos = Math.floor(tiempoTotalMs / (1000 * 60));
+
+        return {
+          id: session.id_sesion,
+          // CORREGIR: Usar nombre_sesion, no titulo
+          titulo: session.nombre_sesion,
+          // CORREGIR: Acceder a metodo_asociado.nombre_metodo
+          metodo: session.metodo_asociado?.nombre_metodo || 'Sin método',
+          duracion_minutos: duracionMinutos,
+          fecha_inicio: session.fecha_creacion,
+          estado: (session.estado || 'pendiente').toLowerCase(),
+          concentracion: session.concentracion || 75,
+          productividad: session.productividad,
+          notas: session.notas,
+        };
+      }).sort((a, b) =>
+        new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime()
+      );
     } catch (error) {
       console.error('Error fetching sessions:', error);
       return [];
     }
   };
 
-  const fetchUpcomingEvents = async () => {
+  const fetchUpcomingEvents = async (): Promise<StudyEvent[]> => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.EVENTS);
       const events = extractDataFromResponse(response);
-      
-      // Filtrar eventos pendientes
-      const pendingEvents = events.filter((event: any) => 
-        event.estado === 'pendiente' || event.status === 'pending'
-      );
-      
-      return pendingEvents.map((event: any) => ({
-        id: event.id,
-        titulo: event.titulo || event.title || 'Evento sin título',
-        descripcion: event.descripcion || event.description || 'Sin descripción',
-        fecha_inicio: event.fecha_inicio || event.start_date,
-        fecha_fin: event.fecha_fin || event.end_date,
-        tipo: event.tipo || event.type || 'sesion_estudio',
-        estado: event.estado || event.status || 'pendiente',
-        metodo_id: event.metodo_id || event.method_id,
-        recordatorio: event.recordatorio || event.reminder,
-      }));
+      console.log('📊 Datos crudos de API:', events);
+
+      const now = new Date();
+
+      // CORREGIR: Incluir eventos con estado null o pendiente
+      const upcoming = events.filter((event: any) => {
+        const estado = event.estado || event.status;
+        // Incluir si es null, pendiente, o pending
+        return estado === null ||
+              estado === 'pendiente' ||
+              estado === 'pending';
+      });
+  
+      console.log('🔍 Después de filtro:', upcoming);
+  
+      const upcomingEventsData = upcoming.map((event: any) => {
+        // CORREGIR: Combinar fechaEvento + horaEvento
+        const fechaHora = `${event.fechaEvento}T${event.horaEvento || '00:00:00'}`;
+        const fechaInicio = new Date(fechaHora);
+        const fechaFin = new Date(fechaInicio.getTime() + 60 * 60 * 1000); // +1 hora
+  
+        return {
+          id: event.idEvento,
+          // CORREGIR: Usar nombreEvento, no titulo
+          titulo: event.nombreEvento,
+          descripcion: event.descripcionEvento || 'Sin descripción',
+          fecha_inicio: fechaInicio.toISOString(),
+          fecha_fin: fechaFin.toISOString(),
+          tipo: event.tipoEvento || 'sesion_estudio',
+          // CORREGIR: Asignar 'pendiente' si es null
+          estado: event.estado || 'pendiente',
+          metodo_id: event.idMetodo || event.metodo_id,
+          recordatorio: event.recordatorio || false,
+        };
+      }).slice(0, 3); // Limitar a 3 eventos
+  
+      console.log('📋 Después de mapeo y limitación:', upcomingEventsData);
+  
+      return upcomingEventsData;
     } catch (error) {
       console.error('Error fetching events:', error);
       return [];
     }
   };
 
-  const fetchUserProgress = async () => {
+  const fetchUserProgress = async (): Promise<UserProgress | null> => {
     try {
       // Obtener estadísticas del usuario
       const [methodsResponse, sessionsResponse, musicResponse, eventsResponse] = await Promise.all([
@@ -550,38 +747,35 @@ const Home: React.FC = () => {
         apiClient.get(API_ENDPOINTS.EVENTS),
       ]);
 
-      const userMethods = extractDataFromResponse(methodsResponse);
-      const userSessions = extractDataFromResponse(sessionsResponse);
+      const userMethods = extractDataFromResponse(methodsResponse) as MethodReport[];
+      const userSessions = extractDataFromResponse(sessionsResponse) as SessionReport[];
       const userMusic = extractDataFromResponse(musicResponse);
       const userEvents = extractDataFromResponse(eventsResponse);
 
       // Calcular estadísticas
-      const completedMethods = userMethods.filter((m: any) => m.progreso === 100).length;
-      const activeMethods = userMethods.filter((m: any) => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
+      const completedMethods = userMethods.filter((m: MethodReport) => m.progreso === 100).length;
+      const activeMethods = userMethods.filter((m: MethodReport) => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
       const pendingEvents = userEvents.filter((e: any) => e.estado === 'pendiente' || e.status === 'pending').length;
-      
+
       // Calcular tiempo total de estudio (en segundos)
       const totalStudyTime = userSessions
-        .filter((s: any) => s.estado === 'completada' || s.status === 'completed')
-        .reduce((total: number, session: any) => total + (session.duracion_minutos || session.duration_minutes || 0) * 60, 0);
+        .filter((s: SessionReport) => s.estado === 'completado')
+        .reduce((total: number, session: SessionReport) => total + (session.tiempoTotal || 0) * 60, 0);
 
-      // Calcular concentración promedio
-      const sessionsWithConcentration = userSessions.filter((s: any) => s.concentracion);
-      const averageConcentration = sessionsWithConcentration.length > 0
-        ? sessionsWithConcentration.reduce((sum: number, session: any) => sum + (session.concentracion || 0), 0) / sessionsWithConcentration.length
-        : 75;
+      // Calcular concentración promedio - no disponible en SessionReport, usar valor por defecto
+      const averageConcentration = 75;
 
       // Calcular racha (días seguidos estudiando) - Esto necesitaría un cálculo más complejo
       // Por ahora, lo calculamos basado en sesiones en los últimos 7 días
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const recentSessions = userSessions.filter((s: any) => {
-        const sessionDate = new Date(s.fecha_inicio || s.created_at);
+      const recentSessions = userSessions.filter((s: SessionReport) => {
+        const sessionDate = new Date(s.fechaCreacion);
         return sessionDate > weekAgo;
       });
       const uniqueDays = new Set(
-        recentSessions.map((s: any) => {
-          const date = new Date(s.fecha_inicio || s.created_at);
+        recentSessions.map((s: SessionReport) => {
+          const date = new Date(s.fechaCreacion);
           return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         })
       );
@@ -610,16 +804,13 @@ const Home: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('Cargando datos del usuario...');
-      
-      // Cargar todos los datos en paralelo
-      const [
-        methods,
-        albums,
-        sessions,
-        events,
-        progress
-      ] = await Promise.all([
+      // Timeout para evitar esperas infinitas
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout cargando datos')), 5000)
+      );
+
+      // Cargar datos reales
+      const dataPromise = Promise.all([
         fetchStudyMethods(),
         fetchMusicAlbums(),
         fetchRecentSessions(),
@@ -627,51 +818,51 @@ const Home: React.FC = () => {
         fetchUserProgress(),
       ]);
 
-      console.log('Datos cargados:', {
-        methods: methods.length,
-        albums: albums.length,
-        sessions: sessions.length,
-        events: events.length,
-        progress: progress ? 'OK' : 'Error'
-      });
+      // Race entre timeout y datos reales
+      const [methods, albums, sessions, events, progress] =
+        await Promise.race([dataPromise, timeoutPromise.then(() => { throw new Error('Timeout'); })]);
 
-      // Actualizar estados con los datos obtenidos
-      setStudyMethods(methods.slice(0, 3)); // Solo mostrar 3 métodos
-      setMusicAlbums(albums.slice(0, 3));   // Solo mostrar 3 álbumes
-      setRecentSessions(sessions.slice(0, 5)); // Solo mostrar 5 sesiones
-      setUpcomingEvents(events.slice(0, 3)); // Solo mostrar 3 eventos
+      // Si tenemos datos, usarlos
+      if (methods && methods.length > 0) {
+        setStudyMethods(methods.slice(0, 3));
+        setMusicAlbums(albums.slice(0, 3));
+        setRecentSessions(sessions.slice(0, 5));
+        setUpcomingEvents(events.slice(0, 3));
 
-      // Si se obtuvo progreso del usuario, usarlo
-      if (progress) {
-        setUserProgress(progress);
+        console.log('📝 Estado upcomingEvents asignado con:', events.slice(0, 3));
+
+        if (progress) {
+          setUserProgress(progress);
+        } else {
+          // Calcular progreso basado en datos locales
+          const completedMethods = methods.filter(m => m.progreso === 100).length;
+          const activeMethods = methods.filter(m => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
+
+          setUserProgress({
+            totalMethods: methods.length,
+            completedMethods,
+            totalSessions: sessions.length,
+            totalMusic: albums.length,
+            activeMethods,
+            upcomingEvents: events.length,
+            totalStudyTime: 0,
+            averageConcentration: 75,
+            streakDays: 0,
+          });
+        }
       } else {
-        // Calcular progreso basado en datos locales si no se pudo obtener de la API
-        const completedMethods = methods.filter(m => m.progreso === 100).length;
-        const activeMethods = methods.filter(m => (m.progreso || 0) > 0 && (m.progreso || 0) < 100).length;
-        
-        setUserProgress({
-          totalMethods: methods.length,
-          completedMethods,
-          totalSessions: sessions.length,
-          totalMusic: albums.length,
-          activeMethods,
-          upcomingEvents: events.length,
-          totalStudyTime: 0, // No se puede calcular sin datos
-          averageConcentration: 75,
-          streakDays: 0,
-        });
+        // Si no hay datos reales, cargar mock
+        loadMockData();
       }
 
     } catch (err: any) {
       console.error('Error general cargando datos:', err);
-      
-      // Mostrar error pero no usar datos mock en producción
-      setError('Error al cargar los datos. Verifica tu conexión e intenta de nuevo.');
-      
-      // En desarrollo, puedes usar datos mock si quieres
+
+      // En desarrollo, siempre cargar mock data
       if (__DEV__) {
-        console.log('Usando datos de ejemplo para desarrollo');
         loadMockData();
+      } else {
+        setError('Error al cargar los datos. Verifica tu conexión e intenta de nuevo.');
       }
     } finally {
       setLoading(false);
@@ -824,7 +1015,7 @@ const Home: React.FC = () => {
       const targetScreen = screenMap[screen] || screen;
       
       if (navigation && typeof navigation.navigate === 'function') {
-        navigation.navigate(targetScreen as never, params as never);
+        navigation.navigate(targetScreen as never);
       }
     } catch (err) {
       console.warn(`Error navegando a ${screen}:`, err);
@@ -923,8 +1114,7 @@ const Home: React.FC = () => {
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>EstudioFocus</Text>
-          <Text style={styles.headerSubtitle}>Dashboard</Text>
+          <Text style={styles.headerTitle}>Focus Up</Text>
         </View>
         
         <TouchableOpacity 
@@ -968,13 +1158,24 @@ const Home: React.FC = () => {
               Tu progreso de estudio hoy
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.quickStartButton}
-            onPress={() => navigateTo('Session')}
-          >
-            <Zap size={18} color="#fff" />
-            <Text style={styles.quickStartText}>Inicio Rápido</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity
+              style={[styles.quickStartButton, { backgroundColor: COLORS.warning }]}
+              onPress={() => navigateTo('FocusMode')}
+            >
+              <Target size={18} color="#fff" />
+              <Text style={styles.quickStartText}>Enfoque Total</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickStartButton}
+              onPress={() => navigateTo('sessions')}
+            >
+              <Zap size={18} color="#fff" />
+              <Text style={styles.quickStartText}>Sesiones</Text>
+            </TouchableOpacity>
+
+          </View>
         </View>
 
         <View style={styles.statsGrid}>
@@ -1015,16 +1216,30 @@ const Home: React.FC = () => {
                   data={studyMethods}
                   keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                   renderItem={({ item, index }) => {
-                    const IconComponent = getMethodIcon(item.icono);
                     const color = item.color || getMethodColor(index, Number(item.id));
+                    const methodImage = METHOD_IMAGES[item.titulo as keyof typeof METHOD_IMAGES];
+
                     return (
                       <TouchableOpacity
                         style={styles.methodItem}
                         onPress={() => handleStartSession(item)}
                         activeOpacity={0.7}
                       >
-                        <View style={[styles.methodIcon, { backgroundColor: `${color}15` }]}>
-                          <IconComponent size={20} color={color} />
+                        <View style={styles.methodImageContainer}>
+                          {methodImage ? (
+                            <Image
+                              source={methodImage}
+                              style={styles.methodImage}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <View style={[styles.methodIcon, { backgroundColor: `${color}15` }]}>
+                              {(() => {
+                                const IconComponent = getMethodIcon(item.icono);
+                                return <IconComponent size={20} color={color} />;
+                              })()}
+                            </View>
+                          )}
                         </View>
                         <View style={styles.methodInfo}>
                           <Text style={styles.methodTitle}>
@@ -1033,22 +1248,6 @@ const Home: React.FC = () => {
                           <Text style={styles.methodDescription} numberOfLines={1}>
                             {item.descripcion}
                           </Text>
-                          <View style={styles.progressContainer}>
-                            <View style={styles.progressBar}>
-                              <View
-                                style={[
-                                  styles.progressFill,
-                                  { 
-                                    width: `${item.progreso || 0}%`,
-                                    backgroundColor: color,
-                                  }
-                                ]}
-                              />
-                            </View>
-                            <Text style={[styles.progressText, { color }]}>
-                              {item.progreso || 0}%
-                            </Text>
-                          </View>
                         </View>
                         <TouchableOpacity
                           style={[styles.startButton, { backgroundColor: `${color}15` }]}
@@ -1095,38 +1294,48 @@ const Home: React.FC = () => {
                 <FlatList
                   data={musicAlbums}
                   keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.musicItem}
-                      onPress={() => handlePlayMusic(item)}
-                      activeOpacity={0.7}
-                    >
-                      {item.portada_url ? (
-                        <Image 
-                          source={{ uri: item.portada_url }} 
-                          style={styles.albumCover}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={[styles.albumPlaceholder, { backgroundColor: `${COLORS.secondary}15` }]}>
-                          <Music size={24} color={COLORS.secondary} />
-                        </View>
-                      )}
-                      <View style={styles.musicInfo}>
-                        <Text style={styles.musicTitle}>
-                          {item.titulo || item.nombre}
-                        </Text>
-                        <Text style={styles.musicArtist}>{item.artista}</Text>
-                        <Text style={styles.musicGenre}>{item.genero}</Text>
-                      </View>
+                  renderItem={({ item }) => {
+                    const musicImage = MUSIC_IMAGES[item.genero as keyof typeof MUSIC_IMAGES];
+
+                    return (
                       <TouchableOpacity
-                        style={styles.playButton}
+                        style={styles.musicItem}
                         onPress={() => handlePlayMusic(item)}
+                        activeOpacity={0.7}
                       >
-                        <Play size={16} color="#fff" />
+                        {musicImage ? (
+                          <Image
+                            source={musicImage}
+                            style={styles.albumCover}
+                            resizeMode="cover"
+                          />
+                        ) : item.portada_url ? (
+                          <Image
+                            source={{ uri: item.portada_url }}
+                            style={styles.albumCover}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.albumPlaceholder, { backgroundColor: `${COLORS.secondary}15` }]}>
+                            <Music size={24} color={COLORS.secondary} />
+                          </View>
+                        )}
+                        <View style={styles.musicInfo}>
+                          <Text style={styles.musicTitle}>
+                            {item.titulo || item.nombre}
+                          </Text>
+                          <Text style={styles.musicArtist}>{item.artista}</Text>
+                          <Text style={styles.musicGenre}>{item.genero}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.playButton}
+                          onPress={() => handlePlayMusic(item)}
+                        >
+                          <Play size={16} color="#fff" />
+                        </TouchableOpacity>
                       </TouchableOpacity>
-                    </TouchableOpacity>
-                  )}
+                    );
+                  }}
                   scrollEnabled={false}
                 />
                 <TouchableOpacity 
@@ -1163,57 +1372,96 @@ const Home: React.FC = () => {
                 <FlatList
                   data={recentSessions}
                   keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-                  renderItem={({ item }) => (
-                    <View style={styles.sessionItem}>
-                      <View style={styles.sessionHeader}>
-                        <View style={styles.sessionTitleContainer}>
-                          <Text style={styles.sessionTitle}>{item.titulo}</Text>
+                  renderItem={({ item }) => {
+                    const isCompleted = item.estado === 'completada';
+                    const methodColor = getMethodColorByName(item.metodo);
+
+                    return (
+                      <View
+                        style={[styles.sessionItem, { backgroundColor: `${methodColor}08`, borderLeftWidth: 4, borderLeftColor: methodColor }]}
+                      >
+                        {/* Header con título y fecha */}
+                        <View style={styles.sessionHeader}>
+                          <View style={styles.sessionTitleContainer}>
+                            <Text style={styles.sessionTitle} numberOfLines={1}>
+                              {item.titulo}
+                            </Text>
+                            <Text style={styles.sessionDate}>
+                              {formatDateShort(item.fecha_inicio)}
+                            </Text>
+                          </View>
                           <View style={[
                             styles.statusBadge,
-                            { backgroundColor: `${getStatusColor(item.estado)}15` }
+                            { backgroundColor: `${getStatusColor(item.estado)}20` }
                           ]}>
-                            <Text style={[styles.statusText, { color: getStatusColor(item.estado) }]}>
+                            <View style={[
+                              styles.statusDot,
+                              { backgroundColor: getStatusColor(item.estado) }
+                            ]} />
+                            <Text style={[
+                              styles.statusText,
+                              { color: getStatusColor(item.estado) }
+                            ]}>
                               {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.sessionTime}>
-                          {formatDate(item.fecha_inicio)}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.sessionDetails}>
-                        <View style={styles.sessionDetail}>
-                          <BookOpen size={12} color={COLORS.textSecondary} />
-                          <Text style={styles.sessionDetailText}>{item.metodo || 'Método'}</Text>
+
+                        {/* Método y Música con checkboxes */}
+                        <View style={styles.sessionOptions}>
+                          <View style={styles.optionItem}>
+                            <View style={[
+                              styles.checkbox,
+                              item.metodo ? styles.checkboxChecked : styles.checkboxUnchecked
+                            ]}>
+                              {item.metodo && <Check size={12} color="#fff" />}
+                            </View>
+                            <View style={styles.optionContent}>
+                              <BookOpen size={14} color={COLORS.textSecondary} />
+                              <Text style={styles.optionText}>
+                                {item.metodo || 'Sin método'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.optionItem}>
+                            <View style={[
+                              styles.checkbox,
+                              isCompleted ? styles.checkboxChecked : styles.checkboxUnchecked
+                            ]}>
+                              {isCompleted && <Check size={12} color="#fff" />}
+                            </View>
+                            <View style={styles.optionContent}>
+                              <Music size={14} color={COLORS.textSecondary} />
+                              <Text style={styles.optionText}>
+                                {isCompleted ? 'Completada' : 'En progreso'}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
-                        <View style={styles.sessionDetail}>
-                          <Timer size={12} color={COLORS.textSecondary} />
-                          <Text style={styles.sessionDetailText}>
-                            {formatDuration(item.duracion_minutos)}
-                          </Text>
-                        </View>
-                        {item.concentracion && (
-                          <View style={styles.sessionDetail}>
-                            <Brain size={12} color={COLORS.textSecondary} />
-                            <Text style={styles.sessionDetailText}>
-                              {item.concentracion}% concentración
+
+                        {/* Duración y Estado */}
+                        <View style={styles.sessionFooter}>
+                          <View style={styles.durationContainer}>
+                            <Clock size={14} color={COLORS.textSecondary} />
+                            <Text style={styles.durationText}>
+                              {formatTime(item.duracion_minutos)}
                             </Text>
                           </View>
-                        )}
+
+                          {item.estado === 'en_curso' && (
+                            <TouchableOpacity
+                              style={styles.continueButton}
+                              onPress={() => navigateTo('Session', { sessionId: item.id })}
+                            >
+                              <Play size={12} color="#fff" />
+                              <Text style={styles.continueButtonText}>Continuar</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
-                      
-                      {item.estado === 'en_curso' && (
-                        <TouchableOpacity
-                          style={styles.continueButton}
-                          onPress={() => navigateTo('Session', { sessionId: item.id })}
-                        >
-                          <Play size={12} color="#fff" />
-                          <Text style={styles.continueButtonText}>Continuar</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
+                  );
+                }}
                   scrollEnabled={false}
                 />
                 <TouchableOpacity 
@@ -1250,55 +1498,60 @@ const Home: React.FC = () => {
                 <FlatList
                   data={upcomingEvents}
                   keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.eventItem}
-                      onPress={() => handleStartEvent(item)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.eventHeader}>
-                        <Text style={styles.eventTitle}>{item.titulo}</Text>
-                        <View style={[
-                          styles.eventTypeBadge,
-                          { 
-                            backgroundColor: item.tipo === 'descanso' ? `${COLORS.secondary}15` : 
-                                          item.tipo === 'repaso' ? `${COLORS.warning}15` : 
-                                          `${COLORS.primary}15` 
-                          }
-                        ]}>
-                          <Text style={[
-                            styles.eventTypeText,
-                            { 
-                              color: item.tipo === 'descanso' ? COLORS.secondary : 
-                                    item.tipo === 'repaso' ? COLORS.warning : 
-                                    COLORS.primary 
-                            }
-                          ]}>
-                            {item.tipo === 'descanso' ? 'Descanso' : 
-                             item.tipo === 'repaso' ? 'Repaso' : 'Estudio'}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      <Text style={styles.eventDescription} numberOfLines={2}>
-                        {item.descripcion}
-                      </Text>
-                      
-                      <View style={styles.eventTime}>
-                        <Calendar size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.eventTimeText}>
-                          {formatDate(item.fecha_inicio)} - {formatDate(item.fecha_fin)}
-                        </Text>
-                      </View>
-                      
+                  renderItem={({ item }) => {
+                    const eventColor = item.metodo_id ? getMethodColor(0, item.metodo_id) : getEventTypeColor(item.tipo);
+
+                    return (
                       <TouchableOpacity
-                        style={styles.startEventButton}
+                        style={styles.eventItem}
                         onPress={() => handleStartEvent(item)}
+                        activeOpacity={0.7}
                       >
-                        <Text style={styles.startEventButtonText}>Comenzar</Text>
+                        <View
+                          style={[styles.eventGradient, { backgroundColor: `${eventColor}10`, borderLeftWidth: 4, borderLeftColor: eventColor }]}
+                        >
+                          <View style={styles.eventHeader}>
+                            <Text style={styles.eventTitle}>{item.titulo}</Text>
+                            <View style={[
+                              styles.eventTypeBadge,
+                              {
+                                backgroundColor: `${eventColor}20`,
+                                borderWidth: 1,
+                                borderColor: `${eventColor}30`
+                              }
+                            ]}>
+                              <Text style={[
+                                styles.eventTypeText,
+                                { color: eventColor }
+                              ]}>
+                                {item.tipo === 'descanso' ? 'Descanso' :
+                                 item.tipo === 'repaso' ? 'Repaso' :
+                                 item.tipo === 'evaluacion' ? 'Evaluación' : 'Estudio'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.eventDescription} numberOfLines={2}>
+                            {item.descripcion}
+                          </Text>
+
+                          <View style={styles.eventTime}>
+                            <Calendar size={14} color={COLORS.textSecondary} />
+                            <Text style={styles.eventTimeText}>
+                              {formatDate(item.fecha_inicio)} - {formatDate(item.fecha_fin)}
+                            </Text>
+                          </View>
+
+                          <TouchableOpacity
+                            style={[styles.startEventButton, { backgroundColor: eventColor }]}
+                            onPress={() => handleStartEvent(item)}
+                          >
+                            <Text style={styles.startEventButtonText}>Comenzar</Text>
+                          </TouchableOpacity>
+                        </View>
                       </TouchableOpacity>
-                    </TouchableOpacity>
-                  )}
+                    );
+                  }}
                   scrollEnabled={false}
                 />
                 <TouchableOpacity 
@@ -1468,6 +1721,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickStartText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sessionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  sessionsButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
@@ -1646,6 +1917,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  methodImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  methodImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
   methodInfo: {
     flex: 1,
   },
@@ -1680,6 +1966,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13,
     minWidth: 36,
+  },
+  progressInfo: {
+    marginLeft: 12,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  progressTextContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgressText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.primary,
   },
   startButton: {
     width: 36,
@@ -1738,56 +2046,101 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sessionItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+    elevation: 4,
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sessionTitleContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   sessionTitle: {
     color: COLORS.textPrimary,
     fontWeight: '700',
     fontSize: 15,
-    flex: 1,
+    marginBottom: 4,
   },
-  sessionTime: {
+  sessionDate: {
     color: COLORS.textMuted,
     fontSize: 12,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
-  sessionDetails: {
+  sessionOptions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 12,
     gap: 12,
-    marginBottom: 8,
   },
-  sessionDetail: {
+  optionItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.success,
+  },
+  checkboxUnchecked: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  optionContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  sessionDetailText: {
+  optionText: {
     color: COLORS.textSecondary,
-    fontSize: 12,
+    fontSize: 13,
+    flex: 1,
+  },
+  sessionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  durationText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   continueButton: {
     flexDirection: 'row',
@@ -1796,7 +2149,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    alignSelf: 'flex-start',
     gap: 6,
   },
   continueButtonText: {
@@ -1805,9 +2157,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   eventItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 6,
+  },
+  eventGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   eventHeader: {
     flexDirection: 'row',
@@ -1823,13 +2183,18 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   eventTypeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eventTypeText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   eventDescription: {
     color: COLORS.textSecondary,
@@ -1848,16 +2213,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   startEventButton: {
-    backgroundColor: COLORS.success,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
     alignItems: 'center',
+    marginTop: 8,
+    elevation: 3,
   },
   startEventButtonText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   viewAllButton: {
     flexDirection: 'row',

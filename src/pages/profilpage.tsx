@@ -16,35 +16,14 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext"; // Mismo que web
 import { useNavigation } from "@react-navigation/native";
-import { MaterialIcons, FontAwesome5, Feather, Ionicons, AntDesign } from "@expo/vector-icons";
-import { apiClient } from "../clientes/apiClient";
+import { MaterialIcons, FontAwesome5, Feather } from "@expo/vector-icons";
+import { api } from "../clientes/apiClient"; // api en mobile, apiClient en web
 import { validateUsername, validateRequired, validateDateOfBirth } from "../utils/validationUtils";
+import type { User } from "../types/user";
 
-// Interfaces
-interface UserProfile {
-  id_usuario?: string;
-  nombre_usuario: string;
-  email?: string;
-  pais: string;
-  genero: string;
-  fecha_nacimiento: string;
-  horario_fav?: string;
-  intereses?: number[];
-  distracciones?: number[];
-}
-
-interface Interest {
-  id: number;
-  nombre: string;
-}
-
-interface Distraction {
-  id: number;
-  nombre: string;
-}
-
+// Interfaces - SIGUIENDO EL USER TYPE DEL WEB
 interface FormData {
   nombre_usuario: string;
   pais: string;
@@ -53,8 +32,9 @@ interface FormData {
   hours: string;
   minutes: string;
   period: string;
-  intereses: number[];
-  distracciones: number[];
+  distraction1: string;
+  distraction2: string;
+  objective: string;
 }
 
 interface PasswordData {
@@ -63,7 +43,7 @@ interface PasswordData {
   confirmPassword: string;
 }
 
-// Static data
+// Static data - IGUAL QUE WEB
 const countries = [
   { label: "Colombia", value: "Colombia" },
   { label: "México", value: "México" },
@@ -95,7 +75,7 @@ const hours = Array.from({ length: 12 }, (_, i) => ({
 
 const minutes = Array.from({ length: 60 }, (_, i) => ({
   label: i.toString().padStart(2, "0"),
-  value: i.toString(),
+  value: i.toString().padStart(2, "0"),
 }));
 
 const periods = [
@@ -103,46 +83,51 @@ const periods = [
   { label: "PM", value: "PM" },
 ];
 
-// Multi-select modal component
-interface MultiSelectModalProps {
+// Opciones de intereses (objetivos) - IGUAL QUE WEB
+const objectives = [
+  { value: "1", label: "Estudio y Aprendizaje" },
+  { value: "2", label: "Trabajo y Productividad" },
+  { value: "3", label: "Tareas Domésticas y Organización Personal" },
+  { value: "4", label: "Creatividad y Proyectos Personales" },
+  { value: "5", label: "Salud Mental y Bienestar" },
+];
+
+// Opciones de distracciones - IGUAL QUE WEB
+const distractions = [
+  { value: "1", label: "Redes sociales" },
+  { value: "2", label: "Mensajería instantánea" },
+  { value: "3", label: "Notificaciones del teléfono" },
+  { value: "4", label: "Correo electrónico" },
+  { value: "5", label: "Plataformas de video" },
+  { value: "6", label: "Juegos móviles o en línea" },
+  { value: "7", label: "Scroll infinito" },
+  { value: "8", label: "Compras online" },
+  { value: "9", label: "Ruidos externos" },
+  { value: "10", label: "Interrupciones de otras personas" },
+  { value: "11", label: "Hambre o sed" },
+  { value: "12", label: "Falta de comodidad" },
+  { value: "13", label: "Desorden en el espacio de trabajo" },
+  { value: "14", label: "Mascotas" },
+  { value: "15", label: "Pensamientos intrusivos" },
+  { value: "16", label: "Sueño/fatiga" },
+  { value: "17", label: "Aburrimiento" },
+  { value: "18", label: "Multitarea" },
+  { value: "19", label: "Día soñando despierto" },
+  { value: "20", label: "Estrés o ansiedad" },
+];
+
+// Modal para selección
+interface SelectionModalProps {
   visible: boolean;
   title: string;
-  items: { id: number; nombre: string }[];
-  selected: number[];
-  onSelect: (selected: number[]) => void;
+  items: Array<{value: string, label: string}>;
+  selectedValue: string;
+  onSelect: (value: string) => void;
   onClose: () => void;
-  maxSelect?: number;
 }
 
-interface ChipProps {
-  label: string;
-  onRemove: () => void;
-}
-
-const MultiSelectModal: React.FC<MultiSelectModalProps> = (props) => {
-  const { visible, title, items, selected, onSelect, onClose, maxSelect } = props;
-  const [tempSelected, setTempSelected] = useState<number[]>(selected);
-
-  useEffect(() => {
-    setTempSelected(selected);
-  }, [selected, visible]);
-
-  const toggleItem = (id: number) => {
-    if (tempSelected.includes(id)) {
-      setTempSelected(tempSelected.filter(item => item !== id));
-    } else {
-      if (maxSelect && tempSelected.length >= maxSelect) {
-        Alert.alert("Límite alcanzado", `Puedes seleccionar máximo ${maxSelect} elementos.`);
-        return;
-      }
-      setTempSelected([...tempSelected, id]);
-    }
-  };
-
-  const handleConfirm = () => {
-    onSelect(tempSelected);
-    onClose();
-  };
+const SelectionModal: React.FC<SelectionModalProps> = (props) => {
+  const { visible, title, items, selectedValue, onSelect, onClose } = props;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -156,57 +141,34 @@ const MultiSelectModal: React.FC<MultiSelectModalProps> = (props) => {
           </View>
           <FlatList
             data={items}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => item.value}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.multiSelectItem}
-                onPress={() => toggleItem(item.id)}
+                onPress={() => {
+                  onSelect(item.value);
+                  onClose();
+                }}
               >
-                <Text style={styles.multiSelectItemText}>{item.nombre}</Text>
-                <View style={styles.checkbox}>
-                  {tempSelected.includes(item.id) && (
-                    <MaterialIcons name="check" size={20} color="#8B5CF6" />
-                  )}
-                </View>
+                <Text style={styles.multiSelectItemText}>{item.label}</Text>
+                {selectedValue === item.value && (
+                  <MaterialIcons name="check" size={20} color="#8B5CF6" />
+                )}
               </TouchableOpacity>
             )}
           />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity style={styles.modalCancelButton} onPress={onClose}>
-              <Text style={styles.modalCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalConfirmButton} onPress={handleConfirm}>
-              <Text style={styles.modalConfirmText}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </Modal>
   );
 };
 
-// Chip component
-interface ChipProps {
-  label: string;
-  onRemove: () => void;
-}
-
-const Chip: React.FC<ChipProps> = (props: ChipProps) => {
-  const { label, onRemove } = props;
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipText}>{label}</Text>
-      <TouchableOpacity onPress={onRemove}>
-        <MaterialIcons name="close" size={16} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
 export const ProfileScreen: React.FC = () => {
-  const { user, loading: authLoading, logout } = useAuth();
+  // MISMO HOOK QUE WEB
+  const { user, loading: authLoading, updateUser, logout } = useAuth();
   const navigation = useNavigation();
 
+  // MISMO ESTADO INICIAL QUE WEB
   const [formData, setFormData] = useState<FormData>({
     nombre_usuario: "",
     pais: "",
@@ -215,8 +177,9 @@ export const ProfileScreen: React.FC = () => {
     hours: "",
     minutes: "",
     period: "",
-    intereses: [],
-    distracciones: [],
+    distraction1: "",
+    distraction2: "",
+    objective: "",
   });
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
@@ -233,90 +196,71 @@ export const ProfileScreen: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showInterestsModal, setShowInterestsModal] = useState(false);
-  const [showDistractionsModal, setShowDistractionsModal] = useState(false);
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [distractions, setDistractions] = useState<Distraction[]>([]);
+  
+  const [showDistraction1Modal, setShowDistraction1Modal] = useState(false);
+  const [showDistraction2Modal, setShowDistraction2Modal] = useState(false);
+  const [showObjectiveModal, setShowObjectiveModal] = useState(false);
 
-  // Load profile data
+  // Cargar datos - SIMPLIFICADO COMO WEB
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
+    if (!user) return;
 
-      setLoading(true);
-      try {
-        const [profileRes, interestsRes, distractionsRes] = await Promise.all([
-          apiClient.getUserProfile(),
-          apiClient.getInterests(),
-          apiClient.getDistractions(),
-        ]);
+    console.log("Usuario del AuthContext:", user);
 
-        const profileData = profileRes;
+    // Convertir horario_fav de formato HH:MM:SS a componentes separados si existe
+    let hours = "", minutes = "", period = "";
+    if (user.horario_fav) {
+      console.log("Horario_fav encontrado:", user.horario_fav);
+      const [timePart] = user.horario_fav.split(' '); // Remover segundos si existen
+      const [hourStr, minuteStr] = timePart.split(':');
+      const hour = parseInt(hourStr);
+      hours = (hour === 0 ? 12 : hour > 12 ? hour - 12 : hour).toString().padStart(2, '0');
+      minutes = minuteStr;
+      period = hour >= 12 ? "PM" : "AM";
+      console.log("Horario procesado:", { hours, minutes, period });
+    }
 
-        // Process time
-        let hours = "", minutes = "", period = "";
-        if (profileData.horario_fav) {
-          const timeMatch = profileData.horario_fav.match(/(\d{1,2}):(\d{2})/);
-          if (timeMatch) {
-            let hour = parseInt(timeMatch[1]);
-            minutes = timeMatch[2];
-
-            if (hour >= 12) {
-              period = "PM";
-              if (hour > 12) hour -= 12;
-            } else {
-              period = "AM";
-              if (hour === 0) hour = 12;
-            }
-            hours = hour.toString().padStart(2, "0");
-          }
-        }
-
-        // Process birth date
-        let fechaNacimiento = new Date();
-        if (profileData.fecha_nacimiento) {
-          const date = new Date(profileData.fecha_nacimiento);
-          if (!isNaN(date.getTime())) {
-            fechaNacimiento = date;
-          }
-        }
-
-        setFormData({
-          nombre_usuario: profileData.nombre_usuario || "",
-          pais: profileData.pais || "",
-          genero: profileData.genero || "",
-          fecha_nacimiento: fechaNacimiento,
-          hours,
-          minutes,
-          period,
-          intereses: profileData.intereses || [],
-          distracciones: profileData.distracciones || [],
-        });
-
-        // Transform string arrays to objects with id and nombre
-        const interestsData = (interestsRes || []).map((name: string, index: number) => ({
-          id: index + 1,
-          nombre: name
-        }));
-        const distractionsData = (distractionsRes || []).map((name: string, index: number) => ({
-          id: index + 1,
-          nombre: name
-        }));
-
-        setInterests(interestsData);
-        setDistractions(distractionsData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        Alert.alert("Error", "No se pudo cargar la información");
-      } finally {
-        setLoading(false);
+    // Asegurar que fecha_nacimiento sea un objeto Date válido
+    let fechaNacimiento: Date;
+    if (user.fecha_nacimiento) {
+      if (user.fecha_nacimiento instanceof Date) {
+        fechaNacimiento = user.fecha_nacimiento;
+      } else if (typeof user.fecha_nacimiento === 'string') {
+        // Convertir string de fecha a objeto Date
+        const parsedDate = new Date(user.fecha_nacimiento);
+        fechaNacimiento = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+      } else {
+        fechaNacimiento = new Date();
       }
-    };
+    } else {
+      fechaNacimiento = new Date();
+    }
 
-    loadData();
+    // Convertir distracciones array a campos individuales para los dropdowns
+    const distracciones = user.distracciones || [];
+    const distraction1 = distracciones.length > 0 ? distracciones[0].toString() : "";
+    const distraction2 = distracciones.length > 1 ? distracciones[1].toString() : "";
+
+    // Intereses/objetivo
+    const intereses = user.intereses || [];
+    const objective = intereses.length > 0 ? intereses[0].toString() : "";
+
+    setFormData({
+      nombre_usuario: user.nombre_usuario || "",
+      pais: user.pais || "",
+      genero: user.genero || "",
+      fecha_nacimiento: fechaNacimiento,
+      hours,
+      minutes,
+      period,
+      distraction1,
+      distraction2,
+      objective,
+    });
+
   }, [user]);
 
-  const handleChange = (field: keyof FormData, value: string | number[] | Date) => {
+  const handleChange = (field: keyof FormData, value: string | Date) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -325,142 +269,153 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const formatDateForAPI = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    // MISMO QUE WEB: YYYY-MM-DD
+    return date.toISOString().split('T')[0];
   };
 
+  // FUNCIÓN PRINCIPAL - COPIADA DEL WEB CON AJUSTES PARA REACT NATIVE
   const handleUpdateProfile = async () => {
     if (!user?.id_usuario) {
       Alert.alert("Error", "Usuario no identificado");
       return;
     }
 
-    // Validations
-    if (!validateRequired(formData.nombre_usuario)) {
-      Alert.alert("Error", "El nombre de usuario es requerido");
-      return;
-    }
-
-    if (!validateUsername(formData.nombre_usuario)) {
-      Alert.alert("Error", "El nombre de usuario debe tener entre 3 y 20 caracteres alfanuméricos");
-      return;
-    }
-
-    if (!formData.fecha_nacimiento) {
-      Alert.alert("Error", "La fecha de nacimiento es requerida");
-      return;
-    }
-
-    if (!validateDateOfBirth(formatDateForAPI(formData.fecha_nacimiento))) {
-      Alert.alert("Error", "Fecha de nacimiento inválida");
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Convert time to 24h
-      let horario_fav = "";
-      if (formData.hours && formData.minutes && formData.period) {
-        let hour24 = parseInt(formData.hours);
-
-        if (formData.period === "PM" && hour24 !== 12) {
-          hour24 += 12;
-        } else if (formData.period === "AM" && hour24 === 12) {
-          hour24 = 0;
-        }
-
-        horario_fav = `${hour24.toString().padStart(2, '0')}:${formData.minutes.padStart(2, '0')}:00`;
+      // Validar fecha de nacimiento (igual que web)
+      const dateError = validateDateOfBirth(formatDateForAPI(formData.fecha_nacimiento));
+      if (dateError) {
+        Alert.alert("Fecha de nacimiento inválida", dateError);
+        return;
       }
 
-      const updateData = {
+      // Validar nombre de usuario si cambió (igual que web pero simplificado)
+      if (formData.nombre_usuario !== user.nombre_usuario) {
+        const formatError = validateUsername(formData.nombre_usuario);
+        if (formatError) {
+          Alert.alert("Nombre de usuario inválido", formatError);
+          return;
+        }
+      }
+
+      // Validar contraseña si se está cambiando
+      if (showPasswordFields) {
+        if (!passwordData.currentPassword || !passwordData.newPassword) {
+          Alert.alert("Campos incompletos", "Por favor complete todos los campos de contraseña");
+          return;
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+          Alert.alert("Contraseñas no coinciden", "Las nuevas contraseñas no coinciden");
+          return;
+        }
+
+        // Validación básica de contraseña
+        if (passwordData.newPassword.length < 6) {
+          Alert.alert("Contraseña muy corta", "La contraseña debe tener al menos 6 caracteres");
+          return;
+        }
+      }
+
+      // Convertir componentes de tiempo a formato HH:MM (IGUAL QUE WEB)
+      let horarioFav: string | null = null;
+      if (formData.hours && formData.minutes && formData.period) {
+        const hours24 = formData.period === "PM" && formData.hours !== "12" 
+          ? parseInt(formData.hours) + 12 
+          : formData.period === "AM" && formData.hours === "12" 
+            ? 0 
+            : parseInt(formData.hours);
+        horarioFav = `${hours24.toString().padStart(2, '0')}:${formData.minutes.padStart(2, '0')}`;
+        console.log("Horario fav calculado:", horarioFav);
+      }
+
+      // Convertir campos de formulario al formato esperado por la API (IGUAL QUE WEB)
+      const distracciones = [
+        formData.distraction1 ? parseInt(formData.distraction1) : null,
+        formData.distraction2 ? parseInt(formData.distraction2) : null
+      ].filter((id): id is number => id !== null && !isNaN(id));
+
+      const updateData: Record<string, unknown> = {
         nombre_usuario: formData.nombre_usuario,
         pais: formData.pais,
         genero: formData.genero,
-        fecha_nacimiento: formatDateForAPI(formData.fecha_nacimiento),
-        horario_fav: horario_fav || null,
-        intereses: formData.intereses,
-        distracciones: formData.distracciones,
+        fecha_nacimiento: formatDateForAPI(formData.fecha_nacimiento), // YYYY-MM-DD
+        horario_fav: horarioFav,
+        intereses: formData.objective ? [parseInt(formData.objective)] : [],
+        distracciones: distracciones,
       };
 
-      await apiClient.put(`/users/${user.id_usuario}`, updateData);
-
-      Alert.alert("Éxito", "Perfil actualizado correctamente");
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-
-      let errorMessage = "Error al actualizar el perfil";
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorMessage = error.response.data.message || "Datos inválidos";
-        } else if (error.response.status === 409) {
-          errorMessage = "El nombre de usuario ya está en uso";
-        } else if (error.response.status === 401) {
-          errorMessage = "Sesión expirada. Por favor inicia sesión nuevamente";
-        }
+      // If password change is requested, include it (IGUAL QUE WEB)
+      if (showPasswordFields) {
+        updateData.currentPassword = passwordData.currentPassword;
+        updateData.newPassword = passwordData.newPassword;
       }
 
-      Alert.alert("Error", errorMessage);
+      console.log("Enviando datos:", updateData);
+
+      // En mobile usamos 'api', en web usan 'apiClient'
+      // Endpoint igual que web: /users/{id}
+      await api.put(`/users/${user.id_usuario}`, updateData);
+
+      // Actualizar los datos del usuario en el contexto de autenticación (IGUAL QUE WEB)
+      if (updateUser) {
+        const updatedUserData = {
+          nombre_usuario: formData.nombre_usuario,
+          pais: formData.pais,
+          genero: formData.genero,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          horario_fav: horarioFav || undefined,
+          intereses: formData.objective ? [parseInt(formData.objective)] : [],
+          distracciones: distracciones,
+        };
+        updateUser(updatedUserData);
+      }
+
+      Alert.alert("¡Perfil actualizado!", "Los cambios en tu perfil han sido guardados correctamente.");
+
+      // Reset password fields (IGUAL QUE WEB)
+      if (showPasswordFields) {
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setShowPasswordFields(false);
+      }
+
+    } catch (error: any) {
+      console.error("Error al actualizar perfil:", error);
+
+      let errorMessage = "Error al actualizar perfil";
+      
+      // Manejo de errores específicos
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 400) {
+          errorMessage = data?.message || "Datos inválidos. Revisa los campos.";
+        } else if (status === 409) {
+          errorMessage = "El nombre de usuario ya está en uso";
+        } else if (status === 401) {
+          errorMessage = "Sesión expirada. Por favor inicia sesión nuevamente";
+        } else {
+          errorMessage = data?.message || `Error ${status}: ${data?.error || "Error desconocido"}`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert("Error al actualizar", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    // Validations
-    if (!validateRequired(passwordData.currentPassword)) {
-      Alert.alert("Error", "La contraseña actual es requerida");
-      return;
-    }
-
-    if (!validateRequired(passwordData.newPassword)) {
-      Alert.alert("Error", "La nueva contraseña es requerida");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      Alert.alert("Error", "La nueva contraseña debe tener al menos 6 caracteres");
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await apiClient.changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
-
-      Alert.alert("Éxito", "Contraseña cambiada correctamente");
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      setShowPasswordFields(false);
-    } catch (error: any) {
-      console.error("Error changing password:", error);
-
-      let errorMessage = "Error al cambiar la contraseña";
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorMessage = "Contraseña actual incorrecta";
-        } else if (error.response.status === 401) {
-          errorMessage = "Sesión expirada. Por favor inicia sesión nuevamente";
-        }
-      }
-
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    // Esta función ahora está integrada en handleUpdateProfile
+    // (igual que en web, manejan el cambio de contraseña en el mismo submit)
   };
 
   const handleDeleteAccount = () => {
@@ -468,10 +423,15 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const confirmDeleteAccount = async () => {
-    setDeleteLoading(true);
+    if (!user?.id_usuario) {
+      setShowDeleteModal(false);
+      return;
+    }
 
+    setDeleteLoading(true);
     try {
-      await apiClient.delete(`/users/${user?.id_usuario}`);
+      // IGUAL QUE WEB: /users/{id}
+      await api.delete(`/users/${user.id_usuario}`);
 
       Alert.alert(
         "Cuenta eliminada",
@@ -480,16 +440,15 @@ export const ProfileScreen: React.FC = () => {
           {
             text: "OK",
             onPress: () => {
-              if (logout) {
-                logout();
-              }
+              if (logout) logout();
               navigation.navigate("Login" as never);
             },
           },
         ]
       );
+
     } catch (error: any) {
-      console.error("Error deleting account:", error);
+      console.error("Error eliminando cuenta:", error);
       Alert.alert("Error", "No se pudo eliminar la cuenta. Intenta nuevamente.");
     } finally {
       setDeleteLoading(false);
@@ -504,7 +463,20 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  if (authLoading) {
+  // Funciones helper
+  const getDistractionLabel = (value: string) => {
+    if (!value) return "Seleccionar distracción";
+    const distraction = distractions.find(d => d.value === value);
+    return distraction ? distraction.label : "Seleccionar distracción";
+  };
+
+  const getObjectiveLabel = (value: string) => {
+    if (!value) return "Seleccionar objetivo";
+    const objective = objectives.find(o => o.value === value);
+    return objective ? objective.label : "Seleccionar objetivo";
+  };
+
+  if (authLoading || !user) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#8B5CF6" />
@@ -512,6 +484,9 @@ export const ProfileScreen: React.FC = () => {
       </View>
     );
   }
+
+  // El JSX se mantiene igual que antes...
+  // Solo necesitas asegurarte de que los Picker tengan las keys correctas
 
   return (
     <SafeAreaView style={styles.container}>
@@ -552,7 +527,11 @@ export const ProfileScreen: React.FC = () => {
                 >
                   <Picker.Item label="Selecciona un país" value="" />
                   {countries.map((country) => (
-                    <Picker.Item label={country.label} value={country.value} />
+                    <Picker.Item 
+                      key={country.value} 
+                      label={country.label} 
+                      value={country.value} 
+                    />
                   ))}
                 </Picker>
               </View>
@@ -570,7 +549,11 @@ export const ProfileScreen: React.FC = () => {
                 >
                   <Picker.Item label="Seleccionar género" value="" />
                   {genders.map((gender) => (
-                    <Picker.Item label={gender.label} value={gender.value} />
+                    <Picker.Item 
+                      key={gender.value} 
+                      label={gender.label} 
+                      value={gender.value} 
+                    />
                   ))}
                 </Picker>
               </View>
@@ -591,7 +574,11 @@ export const ProfileScreen: React.FC = () => {
                     >
                       <Picker.Item label="HH" value="" />
                       {hours.map((hour) => (
-                        <Picker.Item label={hour.label} value={hour.value} />
+                        <Picker.Item 
+                          key={hour.value} 
+                          label={hour.label} 
+                          value={hour.value} 
+                        />
                       ))}
                     </Picker>
                   </View>
@@ -608,7 +595,11 @@ export const ProfileScreen: React.FC = () => {
                     >
                       <Picker.Item label="MM" value="" />
                       {minutes.map((minute) => (
-                        <Picker.Item label={minute.label} value={minute.value} />
+                        <Picker.Item 
+                          key={minute.value} 
+                          label={minute.label} 
+                          value={minute.value} 
+                        />
                       ))}
                     </Picker>
                   </View>
@@ -625,7 +616,11 @@ export const ProfileScreen: React.FC = () => {
                     >
                       <Picker.Item label="AM/PM" value="" />
                       {periods.map((period) => (
-                        <Picker.Item label={period.label} value={period.value} />
+                        <Picker.Item 
+                          key={period.value} 
+                          label={period.label} 
+                          value={period.value} 
+                        />
                       ))}
                     </Picker>
                   </View>
@@ -650,64 +645,58 @@ export const ProfileScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Intereses */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.sectionTitle}>¿Cuáles son tus intereses principales?</Text>
-              <TouchableOpacity
-                style={styles.multiSelectButton}
-                onPress={() => setShowInterestsModal(true)}
-                disabled={loading}
-              >
-                <Text style={styles.multiSelectButtonText}>
-                  {formData.intereses.length > 0
-                    ? `${formData.intereses.length} seleccionados`
-                    : "Seleccionar intereses"}
-                </Text>
-                <MaterialIcons name="arrow-drop-down" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-              <View style={styles.chipsContainer}>
-                {formData.intereses.map((id) => {
-                  const interest = interests.find(i => i.id === id);
-                  return interest ? (
-                    <Chip
-                      key={id}
-                      label={interest.nombre}
-                      onRemove={() => handleChange("intereses", formData.intereses.filter(i => i !== id))}
-                    />
-                  ) : null;
-                })}
-              </View>
-            </View>
-
-            {/* Distracciones */}
+            {/* Distracciones más comunes */}
             <View style={styles.inputGroup}>
               <Text style={styles.sectionTitle}>
                 ¿Cuáles son tus 2 distracciones más comunes?
               </Text>
+              
+              <View style={styles.distractionContainer}>
+                <View style={styles.distractionInputGroup}>
+                  <Text style={styles.label}>Primera distracción</Text>
+                  <TouchableOpacity
+                    style={styles.selectionButton}
+                    onPress={() => setShowDistraction1Modal(true)}
+                    disabled={loading}
+                  >
+                    <Text style={styles.selectionButtonText}>
+                      {getDistractionLabel(formData.distraction1)}
+                    </Text>
+                    <MaterialIcons name="arrow-drop-down" size={24} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.distractionInputGroup}>
+                  <Text style={styles.label}>Segunda distracción</Text>
+                  <TouchableOpacity
+                    style={styles.selectionButton}
+                    onPress={() => setShowDistraction2Modal(true)}
+                    disabled={loading}
+                  >
+                    <Text style={styles.selectionButtonText}>
+                      {getDistractionLabel(formData.distraction2)}
+                    </Text>
+                    <MaterialIcons name="arrow-drop-down" size={24} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Objetivo principal */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.sectionTitle}>
+                ¿Cuál es tu objetivo principal al utilizar Focus Up?
+              </Text>
               <TouchableOpacity
-                style={styles.multiSelectButton}
-                onPress={() => setShowDistractionsModal(true)}
+                style={styles.selectionButton}
+                onPress={() => setShowObjectiveModal(true)}
                 disabled={loading}
               >
-                <Text style={styles.multiSelectButtonText}>
-                  {formData.distracciones.length > 0
-                    ? `${formData.distracciones.length} seleccionados`
-                    : "Seleccionar distracciones"}
+                <Text style={styles.selectionButtonText}>
+                  {getObjectiveLabel(formData.objective)}
                 </Text>
                 <MaterialIcons name="arrow-drop-down" size={24} color="#9CA3AF" />
               </TouchableOpacity>
-              <View style={styles.chipsContainer}>
-                {formData.distracciones.map((id) => {
-                  const distraction = distractions.find(d => d.id === id);
-                  return distraction ? (
-                    <Chip
-                      key={id}
-                      label={distraction.nombre}
-                      onRemove={() => handleChange("distracciones", formData.distracciones.filter(d => d !== id))}
-                    />
-                  ) : null;
-                })}
-              </View>
             </View>
 
             <View style={styles.separator} />
@@ -727,7 +716,6 @@ export const ProfileScreen: React.FC = () => {
                 <View style={styles.passwordContainer}>
                   <Text style={styles.sectionTitle}>Cambiar contraseña</Text>
 
-                  {/* Contraseña actual */}
                   <View style={styles.passwordInputGroup}>
                     <Text style={styles.label}>Contraseña actual</Text>
                     <View style={styles.inputContainer}>
@@ -754,7 +742,6 @@ export const ProfileScreen: React.FC = () => {
                     </View>
                   </View>
 
-                  {/* Nueva contraseña */}
                   <View style={styles.passwordInputGroup}>
                     <Text style={styles.label}>Nueva contraseña</Text>
                     <View style={styles.inputContainer}>
@@ -781,7 +768,6 @@ export const ProfileScreen: React.FC = () => {
                     </View>
                   </View>
 
-                  {/* Confirmar nueva contraseña */}
                   <View style={styles.passwordInputGroup}>
                     <Text style={styles.label}>Confirmar nueva contraseña</Text>
                     <View style={styles.inputContainer}>
@@ -810,18 +796,6 @@ export const ProfileScreen: React.FC = () => {
 
                   <View style={styles.passwordButtons}>
                     <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={handleChangePassword}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <Text style={styles.secondaryButtonText}>Cambiar contraseña</Text>
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
                       style={styles.cancelButton}
                       onPress={() => {
                         setShowPasswordFields(false);
@@ -833,7 +807,7 @@ export const ProfileScreen: React.FC = () => {
                       }}
                       disabled={loading}
                     >
-                      <Text style={styles.cancelButtonText}>Cancelar</Text>
+                      <Text style={styles.cancelButtonText}>Cancelar cambio</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -878,27 +852,35 @@ export const ProfileScreen: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* Multi-select modals */}
-      <MultiSelectModal
-        visible={showInterestsModal}
-        title="Seleccionar Intereses"
-        items={interests}
-        selected={formData.intereses}
-        onSelect={(selected: number[]) => handleChange("intereses", selected)}
-        onClose={() => setShowInterestsModal(false)}
-      />
-
-      <MultiSelectModal
-        visible={showDistractionsModal}
-        title="Seleccionar Distracciones (máx 2)"
+      {/* Modales de selección */}
+      <SelectionModal
+        visible={showDistraction1Modal}
+        title="Seleccionar primera distracción"
         items={distractions}
-        selected={formData.distracciones}
-        onSelect={(selected: number[]) => handleChange("distracciones", selected)}
-        onClose={() => setShowDistractionsModal(false)}
-        maxSelect={2}
+        selectedValue={formData.distraction1}
+        onSelect={(value) => handleChange("distraction1", value)}
+        onClose={() => setShowDistraction1Modal(false)}
       />
 
-      {/* Delete modal */}
+      <SelectionModal
+        visible={showDistraction2Modal}
+        title="Seleccionar segunda distracción"
+        items={distractions}
+        selectedValue={formData.distraction2}
+        onSelect={(value) => handleChange("distraction2", value)}
+        onClose={() => setShowDistraction2Modal(false)}
+      />
+
+      <SelectionModal
+        visible={showObjectiveModal}
+        title="Seleccionar objetivo principal"
+        items={objectives}
+        selectedValue={formData.objective}
+        onSelect={(value) => handleChange("objective", value)}
+        onClose={() => setShowObjectiveModal(false)}
+      />
+
+      {/* Modal de eliminación de cuenta */}
       <Modal
         visible={showDeleteModal}
         transparent={true}
@@ -1071,7 +1053,13 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     paddingVertical: 12,
   },
-  multiSelectButton: {
+  distractionContainer: {
+    gap: 16,
+  },
+  distractionInputGroup: {
+    gap: 8,
+  },
+  selectionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1082,28 +1070,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minHeight: 50,
   },
-  multiSelectButtonText: {
+  selectionButtonText: {
     fontSize: 16,
     color: "#FFFFFF",
-  },
-  chipsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#8B5CF6",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 8,
-  },
-  chipText: {
-    color: "#FFFFFF",
-    fontSize: 14,
   },
   passwordContainer: {
     gap: 16,
@@ -1262,18 +1231,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  modalConfirmButton: {
-    flex: 1,
-    backgroundColor: "#8B5CF6",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-  },
-  modalConfirmText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   multiSelectItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -1286,15 +1243,6 @@ const styles = StyleSheet.create({
   multiSelectItemText: {
     fontSize: 16,
     color: "#D1D5DB",
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: "#8B5CF6",
-    borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
 

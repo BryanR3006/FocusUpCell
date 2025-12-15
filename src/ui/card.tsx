@@ -33,7 +33,7 @@ export const Card: React.FC<CardProps> = ({ method, onViewStepByStep }) => {
       Animated.timing(scaleAnim, {
         toValue: 0.98,
         duration: 150,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0.8,
@@ -48,12 +48,12 @@ export const Card: React.FC<CardProps> = ({ method, onViewStepByStep }) => {
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 150,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacityAnim, {
         toValue: 1,
         duration: 150,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
   };

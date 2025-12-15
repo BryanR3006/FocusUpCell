@@ -26,20 +26,21 @@ export function validateEmail(email: string): boolean {
  * Valida si la fecha de nacimiento representa una edad entre 13 y 120 años
  * y no está en el futuro.
  * @param dob - La cadena de fecha de nacimiento en un formato parseable (ej. YYYY-MM-DD).
- * @returns Verdadero si la fecha de nacimiento es válida, falso en caso contrario.
+ * @returns Un mensaje de error si es inválida, null si es válida.
  */
-export function validateDateOfBirth(dob: string): boolean {
+export function validateDateOfBirth(dob: string): string | null {
   const date = new Date(dob);
-  if (isNaN(date.getTime())) return false;
+  if (isNaN(date.getTime())) return "Fecha de nacimiento inválida";
   const now = new Date();
   let age = now.getFullYear() - date.getFullYear();
   const monthDiff = now.getMonth() - date.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < date.getDate())) {
     age--;
   }
-  if (age < 13 || age > 120) return false;
-  if (date > now) return false;
-  return true;
+  if (age < 13) return "Debes tener al menos 13 años";
+  if (age > 120) return "Edad no válida";
+  if (date > now) return "La fecha de nacimiento no puede estar en el futuro";
+  return null;
 }
 
 /**
