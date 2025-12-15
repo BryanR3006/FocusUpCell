@@ -356,7 +356,7 @@ export const ProfileScreen: React.FC = () => {
 
       // En mobile usamos 'api', en web usan 'apiClient'
       // Endpoint igual que web: /users/{id}
-      await api.put(`/users/${user.id_usuario}`, updateData);
+      await api.put(`/users`, updateData);
 
       // Actualizar los datos del usuario en el contexto de autenticación (IGUAL QUE WEB)
       if (updateUser) {
@@ -430,8 +430,7 @@ export const ProfileScreen: React.FC = () => {
 
     setDeleteLoading(true);
     try {
-      // IGUAL QUE WEB: /users/{id}
-      await api.delete(`/users/${user.id_usuario}`);
+      await api.delete(`/users/delete`);
 
       Alert.alert(
         "Cuenta eliminada",

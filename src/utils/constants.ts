@@ -7,14 +7,14 @@ export const API_ENDPOINTS = {
   REQUEST_VERIFICATION_CODE: "/auth/request-verification-code",
   VERIFY_CODE: "/auth/verify-code",
   REGISTER: "/auth/register",
-  LOGIN: "/users/login",
-  LOGOUT: "/users/logout",
+  LOGIN: "/auth/login",
+  LOGOUT: "/auth/logout",
 
   // ---------------------------
   // USUARIOS
   // ---------------------------
   USERS: "/users",
-  PROFILE: "/users/profile",
+  PROFILE: "/users",
   DELETE_ACCOUNT: "/users/delete",
   CHANGE_PASSWORD: "/users/change-password",
   REQUEST_PASSWORD_RESET: "/users/request-password-reset",
@@ -75,4 +75,3 @@ export const API_ENDPOINTS = {
   NOTIFICATIONS_SCHEDULED: "/notificaciones/programadas",
 
 } as const;
-
