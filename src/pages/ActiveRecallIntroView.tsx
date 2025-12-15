@@ -15,17 +15,12 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { 
   CheckCircle, 
   RotateCcw, 
   BookOpen, 
   Brain, 
-  ArrowLeft,
-  AlertCircle,
-  Clock,
-  Settings
-} from 'lucide-react-native';
+  ArrowLeft} from 'lucide-react-native';
 
 // Assets locales - ajusta estas rutas según tu estructura
 const LOCAL_METHOD_ASSETS = {
@@ -92,7 +87,7 @@ export const ActiveRecallIntroView: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         const mockMethod: StudyMethod = {
-          id_metodo: parseInt(methodId),
+          id_metodo: Number.parseInt(methodId),
           nombre_metodo: 'Práctica Activa',
           descripcion: 'Método de práctica activa para fortalecer la memoria',
           beneficios: [

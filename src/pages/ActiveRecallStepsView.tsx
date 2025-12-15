@@ -19,16 +19,12 @@ import {
   Clock,
   Settings,
   ArrowLeft,
-  Brain,
-  CheckCircle,
-  RotateCcw,
   BookOpen,
   Timer as TimerIcon,
   AlertCircle,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProgressCircle from '../ui/ProgressCircle';
-import FinishLaterModal from '../ui/FinishLaterModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -155,7 +151,7 @@ export const ActiveRecallStepsView: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const mockMethod: StudyMethod = {
-          id_metodo: parseInt(methodId),
+          id_metodo: Number.parseInt(methodId),
           titulo: 'Práctica Activa',
           descripcion: 'Método de práctica activa para fortalecer la memoria',
         };
@@ -208,7 +204,7 @@ export const ActiveRecallStepsView: React.FC = () => {
       // Simular inicio de sesión
       const mockSession = {
         id: 'session-' + Date.now(),
-        methodId: parseInt(methodId),
+        methodId: Number.parseInt(methodId),
         id_metodo_realizado: Date.now(),
         startTime: new Date().toISOString(),
         progress: 20,
@@ -341,7 +337,7 @@ export const ActiveRecallStepsView: React.FC = () => {
             onPress={() => navigation.navigate('StudyMethods')}
           >
             <ArrowLeft size={20} color="#FFFFFF" />
-            <Text style={styles.backButtonText}>Volver a métodos</Text>
+            <Text style={styles.backButton}>Volver a métodos</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -595,7 +591,7 @@ export const ActiveRecallStepsView: React.FC = () => {
                     style={styles.configInput}
                     value={tempConfig.step1Time.toString()}
                     onChangeText={(text) => {
-                      const newTime = Math.max(1, Math.min(60, parseInt(text) || 1));
+                      const newTime = Math.max(1, Math.min(60, Number.parseInt(text) || 1));
                       setTempConfig(prev => ({ ...prev, step1Time: newTime }));
                     }}
                     keyboardType="numeric"
@@ -613,7 +609,7 @@ export const ActiveRecallStepsView: React.FC = () => {
                     style={styles.configInput}
                     value={tempConfig.step3Time.toString()}
                     onChangeText={(text) => {
-                      const newTime = Math.max(1, Math.min(60, parseInt(text) || 1));
+                      const newTime = Math.max(1, Math.min(60, Number.parseInt(text) || 1));
                       setTempConfig(prev => ({ ...prev, step3Time: newTime }));
                     }}
                     keyboardType="numeric"
@@ -631,7 +627,7 @@ export const ActiveRecallStepsView: React.FC = () => {
                     style={styles.configInput}
                     value={tempConfig.step4Time.toString()}
                     onChangeText={(text) => {
-                      const newTime = Math.max(1, Math.min(60, parseInt(text) || 1));
+                      const newTime = Math.max(1, Math.min(60, Number.parseInt(text) || 1));
                       setTempConfig(prev => ({ ...prev, step4Time: newTime }));
                     }}
                     keyboardType="numeric"

@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { NativeModules } from 'react-native';
+import { NativeModules } from
 import { PageLayout } from '../ui/PageLayout';
 import { ArrowLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';

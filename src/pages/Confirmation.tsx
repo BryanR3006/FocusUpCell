@@ -48,7 +48,7 @@ const ConfirmationPage = () => {
           fechaNacimiento = formData.fecha_nacimiento;
         } else {
           const f = new Date(formData.fecha_nacimiento as any);
-          if (!isNaN(f.getTime())) {
+          if (!Number.isNaN(f.getTime())) {
             fechaNacimiento = f.toISOString().split("T")[0];
           }
         }

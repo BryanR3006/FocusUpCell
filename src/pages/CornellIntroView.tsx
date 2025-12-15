@@ -79,7 +79,7 @@ export const CornellIntroView: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         const mockMethod: StudyMethod = {
-          id_metodo: parseInt(methodId),
+          id_metodo: Number.parseInt(methodId),
           nombre_metodo: 'Método Cornell',
           descripcion: 'Organiza tus notas en secciones estructuradas',
           beneficios: [

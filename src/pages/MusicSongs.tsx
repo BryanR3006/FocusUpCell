@@ -9,7 +9,6 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { 

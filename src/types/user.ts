@@ -17,6 +17,7 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest extends LoginRequest {
+  contrasena: any;
   nombre_usuario: string;
   fecha_nacimiento: Date;
   pais?: string;
