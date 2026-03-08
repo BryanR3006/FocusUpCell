@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://192.168.1.51:3001/api/v1";
+export const API_BASE_URL = "https://focusup-api-ercxbzf8b6e8gcbk.brazilsouth-01.azurewebsites.net/api/v1";
 
 export const API_ENDPOINTS = {
   // ---------------------------
@@ -7,7 +7,7 @@ export const API_ENDPOINTS = {
   REQUEST_VERIFICATION_CODE: "/auth/request-verification-code",
   VERIFY_CODE: "/auth/verify-code",
   REGISTER: "/auth/register",
-  LOGIN: "/users/login",
+  LOGIN: "/auth/login",
   LOGOUT: "/users/logout",
 
   // ---------------------------
