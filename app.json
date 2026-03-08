@@ -15,15 +15,20 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+  "package": "com.focus.app",
+  "versionCode": 1,
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/icon.png",
+    "backgroundColor": "#ffffff"
+  }
     },
     "web": {
       "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ab2640ed-b2fa-4369-be7a-4560aea06e99"
+      }
     }
   }
 }
